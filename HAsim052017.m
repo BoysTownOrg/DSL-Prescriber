@@ -61,86 +61,6 @@ while LOGIN == 1
                     saveas(gcf, [DSLdir, filesep(), listenerID, ' left Speechmap'], 'fig');
                 end
             end
-        case 4
-            fnameR = [listenerID, ' right.csv'];
-            fnameL = [listenerID, ' left.csv'];
-            d = dir([DSLdir, filesep(), '*.csv']);
-            fileNames = {d.name};
-            sameEARright = any(strcmpi(fnameR, fileNames));
-            sameEARleft = any(strcmpi(fnameL, fileNames));
-            tic();
-            for i = 1:length(activeRows)
-                row = activeRows(i);
-                SourceDir = cell2mat(RAW(row,1));
-                DestDir = cell2mat(RAW(row,2));
-                nameMod = cell2mat(RAW(row,3));
-                Nchannel = cell2mat(RAW(row,4));
-                att = cell2mat(RAW(row,5));
-                rel = cell2mat(RAW(row,6));
-                refdB = cell2mat(RAW(row,7));
-                Proc = cell2mat(RAW(row,8));
-                NFCstartLEFT = cell2mat(RAW(row,9));
-                NFCratioLEFT = cell2mat(RAW(row,10));
-                NFCstartRIGHT = cell2mat(RAW(row,11));
-                NFCratioRIGHT = cell2mat(RAW(row,12));
-                if sameEARright
-                    rightRx = load([DSLdir, filesep(), fnameR]);
-                    ProcDir([listenerID, nameMod], 0, SourceDir, DestDir, refdB, Proc, rightRx.DSL, att, rel, NFCstartRIGHT, NFCratioRIGHT);
-                end
-                if sameEARleft
-                    leftRx = load([DSLdir, filesep(), fnameL]);
-                    ProcDir([listenerID, nameMod], 1, SourceDir, DestDir, refdB, Proc, leftRx.DSL, att, rel, NFCstartLEFT, NFCratioLEFT);
-                end
-            end
-            elapsedTime = toc;
-            warndlg(sprintf('PROCESSING COMPLETED in %g minutes, %g seconds',floor(elapsedTime/60),round(rem(elapsedTime, 60))), 'HAsim Update');
-        case 5
-            ear = menu4('Select Ear', 'RIGHT', 'LEFT') - 1;
-            if ear == 0
-                open([DSLdir, filesep(), listenerID, ' right Speechmap.fig']);
-            else
-                open([DSLdir, filesep(), listenerID, ' left Speechmap.fig']);
-            end
-            button = 1;
-            while button == 1
-                [x, y, button] = ginput(1);
-                title(sprintf('%g Hz, %g dB SPL', round(x), round2(y, 1)), ...
-                    'fontsize', 18, ...
-                    'fontweight', 'bold');
-            end
-        case 6
-            DiagOpt = menu4( ...
-                'Select Option', ...
-                'RIGHT Ear, Carrot Passage', ...
-                'LEFT Ear, Carrot Passage', ...
-                'RIGHT Ear, Stimulus File', ...
-                'LEFT Ear, Stimulus File');
-            TestEar = rem(DiagOpt+1, 2);
-            if TestEar == 0
-                load([DSLdir, filesep(), listenerID, ' right DSL.mat']);
-                NFCstart = NFCstartRIGHT;
-                NFCratio = NFCratioRIGHT;
-            else
-                load([DSLdir, filesep(), listenerID, ' left DSL.mat']);
-                NFCstart = NFCstartLEFT;
-                NFCratio = NFCratioLEFT;
-            end
-            if DiagOpt < 3
-                [x, Fs] = audioread('C:\HA Simulator\MATLAB\carrots');
-            else
-                [filename, pathname] = uigetfile([SourceDir, filesep(), '*.wav'], 'Select Wav File');
-                if ~pathname
-                    return
-                end
-                [x, Fs] = audioread([pathname, filename]);
-            end
-            WDRCvisual(x, Fs, refdB, Proc, NFCstart, NFCratio, DSL, att, rel)
-        case 7
-            startup
-        case 8
-            DownSampleBatch;
-        case 9
-            LOGIN = 0;
     end
 end
 
@@ -449,33 +369,6 @@ if proceed == 1
     end
 end
 
-function comp_freq = compf(sel_freq,factor,Fc,Fs)
-bound = 2*pi*Fc/Fs;
-comp_freq = (sel_freq.^factor)*(bound^(1-factor));
-
-function DownSampleBatch()
-[~, pathname1] = uigetfile('*.wav', 'Select Folder to Retrieve Files FROM');
-if ~pathname1
-    return
-end
-[~, pathname2] = uiputfile('Select Folder to Save Files TO');
-if ~pathname2
-    return
-end
-Fs2 = 22050;
-files = dir([pathname1, '*.wav']);
-fileNames = {files.name};
-fileCount = length(fileNames);
-h = timebar('Resample batch Counter','Progress');
-for n = 1:fileCount
-    [x, Fs, Nbits] = audioread([pathname1, fileNames{n}]);
-    y = resample(x(:,1), Fs2, Fs);
-    audiowrite([pathname2, fileNames{n}], y, Fs2, ...
-        'bitspersample', Nbits);
-    timebar(h,n/fileCount);
-end
-close(h)
-
 function banana = DSLspeechmap(maxdB, x, Fs, lid, ear, Thresh, TargetAvg, BOLT, MPO, DSLdir, att, rel, Nchannel)
 lower = 30;
 upper = 99;
@@ -582,85 +475,6 @@ end
 orient landscape
 rect = [1, 1, 1, 1];
 saveas(gcf,sprintf('%s/%s Speechmap (%s ear)',DSLdir,lid,earlabel),'pdf');
-
-function y = FIRbandpass(x,Fs,nfir,F1,F2)
-Fnyq = Fs/2; % Nyquist frequency
-x = x(:);
-gain = [0 0 1 1 0 0];
-f = [0 F1 F1 F2 F2 Fnyq];
-h = fir2(nfir,f./Fnyq,gain,hamming(nfir+1));
-y = conv(x,h,'same');
-
-function y = FIRlowpass(x,Fs,nfir,Fc)
-Fnyq = Fs/2;
-x = x(:);
-gain = [1 1 0 0];
-f = [0 Fc Fc Fnyq];
-h = fir2(nfir,f./Fnyq,gain,hamming(nfir+1));
-y = conv(x,h,'same');
-
-function output = FreqComp(x,Fs,Fc,CR,Nbins)
-if nargin < 5
-    Nbins = 26;
-end
-if size(x,1)>size(x,2)
-    x=x';
-end
-x = [zeros(1,round(Fs*0.25),1),x];
-win_size = 256;
-steps = 32;
-nfft = 128;
-tot_t = length(x)/Fs;
-time = tot_t*linspace(0,1,length(x));
-pi2 = 2*pi;
-if rem(nfft,2) == 1
-    ret_n = (nfft+1)/2;
-else
-    ret_n = nfft/2;
-end
-cent_freq_Hz = (0:ret_n)*Fs/nfft;
-cent_freq_rad = ((0:nfft-1)*pi2/nfft)';
-start_bin = find(cent_freq_Hz > Fc, 1);
-if (abs(cent_freq_Hz(start_bin) - Fc) > abs(cent_freq_Hz(start_bin - 1) - Fc))
-    start_bin = start_bin - 1;
-end
-end_bin = start_bin + Nbins;
-start_freq = cent_freq_Hz(start_bin);
-end_freq = cent_freq_Hz(end_bin);
-[low_out] = FIRlowpass(x,Fs,win_size,start_freq);
-w1 = window(@hamming,win_size);
-w2 = lanczos(win_size);
-win = w1.*w2;
-win_size = length(win);
-[block_X] = spectrogram(x,win,win_size-steps,nfft,Fs);
-fft_mag = abs(block_X(1:ret_n+1,:));
-phases = unwrap(angle(block_X(1:ret_n+1,:)));
-[num_bin,num_seg] = size(phases);
-syn_mag = zeros(num_bin,num_seg+1);
-for n = 1:num_seg
-    syn_mag(:,n) = fft_mag(:,n);
-end
-synthSignal = zeros(1,(num_seg*steps) + length(win));
-curStart = 1;
-pXk_base = phases(1:num_bin,1);
-for i = 1:num_seg-1
-    pXk = phases(1:num_bin,i+1);
-    diff_phase = pXk - pXk_base - (i.*steps*cent_freq_rad(1:num_bin));
-    diff_phase = mod(diff_phase+pi2,pi2) - pi2;
-    inst_freq = (1/(steps*i))*diff_phase+cent_freq_rad(1:num_bin);
-    inst_phase = (1/(steps*i))*pXk+cent_freq_rad(1:num_bin);
-    sel_freq = abs(inst_freq(start_bin:end_bin));
-    sel_mag = syn_mag(start_bin:end_bin,i+1);
-    comp_freq = compf(sel_freq,1/CR,start_freq,Fs);
-    comp_mag = sel_mag*max(comp_freq)/max(sel_freq);
-    samp_t = time(steps*(i-1)+1:steps*(i-1)+win_size);
-    osc_out = sinoscillator(comp_freq,comp_mag,samp_t,Fs,inst_phase);
-    synthSignal(curStart:curStart + win_size -1) = synthSignal(curStart:curStart + win_size -1) + osc_out.*win';
-    curStart = curStart + steps;
-end
-band_out = FIRbandpass(x,Fs,win_size,start_freq,end_freq);
-synthSignal = -synthSignal/rms2(synthSignal)*rms2(band_out)./CR;
-output = low_out(round(Fs*0.25)+1:length(x)) + synthSignal(round(Fs*0.25)-1:length(x)-2)';
 
 function [frequency,thrCorr] = GetThresh(thrType,ear,audiodir,filename)
 if nargin < 2
@@ -797,11 +611,6 @@ for n = 2:num_channel-1
     b(n,:) = fir2(nfir,f./nyqfreq,gain); %FIR filter design
     y(:,n) = conv(x,b(n,:));
 end
-
-function window = lanczos(L)
-k = 1:L;
-window = sinc(2*k/(L-1)-1);
-window = window';
 
 function k = menu2(xHeader,varargin)
 %   J.N. Little 4-21-87, revised 4-13-92 by LS, 2-18-97 by KGK.
@@ -1205,20 +1014,6 @@ waitfor(gcf,'userdata')
 k = get(gcf,'userdata');
 delete(menuFig)
 
-function newfigure(c)
-if c ~= 99
-    figure('Name',sprintf('Channel %s, I/O Plot',c),'NumberTitle','off');
-else
-    figure('Name','Broadband OCL I/O Plot','NumberTitle','off');
-end
-
-function newfigure2(c)
-if c ~= 99
-    figure('Name',sprintf('Channel %s, Internal Dynamics',c),'NumberTitle','off');
-else
-    figure('Name','Broadband OCL Internal Dynamics','NumberTitle','off');
-end
-
 function [B,A] = oct3dsgn(Fc,Fs,N)
 % OCT3DSGN  Design of a one-third-octave filter.
 %    [B,A] = OCT3DSGN(Fc,Fs,N) designs a digital 1/3-octave filter with
@@ -1261,80 +1056,6 @@ alpha = (1 + sqrt(1+4*Qd^2))/2/Qd;
 W1 = Fc/(Fs/2)/alpha;
 W2 = Fc/(Fs/2)*alpha;
 [B,A] = butter(N,[W1,W2]);
-
-function ProcDir(lid,TestEar,SourceDir,DestDir,refdB,Proc,DSL,att,rel,NFCstart,NFCratio)
-if TestEar == 0
-    EARlabel = 'RIGHT';
-else
-    EARlabel = 'LEFT';
-end
-if strncmpi(SourceDir,'C:\HA Simulator\BoyDogFrog',26)
-    story = 1;
-    delFolderContents(tempdir,'boy*');
-elseif strncmpi(SourceDir,'C:\HA Simulator\Frog',20)
-    story = 2;
-    delFolderContents(tempdir,'Frog*');
-else
-    story = 0;
-end
-mkdir(strcat(DestDir,'\',lid));
-cd(SourceDir)
-file = dir('*.wav');
-filename = {file.name};
-index = length(filename);
-parfor n = 1:index
-    procfile(char(filename(n)),refdB,lid,EARlabel,Proc,story,NFCstart,NFCratio,DestDir,DSL,att,rel)
-end
-if story > 0
-    concat = [];
-    for n = 1:index
-        [q,Fs,~] = audioread(strcat(tempdir,char(filename(n))));
-        concatsize = length(concat);
-        qsize = length(q);
-        concat(concatsize+1:concatsize+qsize) = q;
-    end
-    if story == 1
-        audiowrite(strcat(DestDir,'\',lid,'\',sprintf('Boy-%s-%s',Proc,EARlabel(1))), concat, Fs);
-        delFolderContents(tempdir,'boy*');
-    else
-        audiowrite(strcat(DestDir,'\',lid,'\',sprintf('Frog-%s-%s',Proc,EARlabel(1))), concat, Fs);
-        delFolderContents(tempdir,'Frog*');
-    end
-    cd(SourceDir)
-end
-
-function procfile(stim,refdB,lid,EARlabel,Proc,story,NFCstart,NFCratio,DestDir,DSL,att,rel)
-maxdB = 119;
-[x,Fs,Nbits] = audioread(stim);
-if Fs ~= 22050
-    warndlg('The sampling rate needs to be 22.05 kHz.','SAMPLING RATE ERROR');
-    startup
-end
-switch Proc
-    case 'EBW'
-        y = WDRC(DSL.Cross_freq,x,Fs,refdB,maxdB,DSL.TKgain,DSL.CR,DSL.TK,DSL.BOLT,att,rel);
-        z = FIRlowpass(y,22050,1024,10000);
-    case 'RBW'
-        y = WDRC(DSL.Cross_freq,x,Fs,refdB,maxdB,[DSL.TKgain(1:7),0],DSL.CR,DSL.TK,DSL.BOLT,att,rel);
-        z = FIRlowpass(y,22050,1024,5000);
-    case 'NFC'
-        startbin = round((NFCstart/(22050/128)));
-        startfreq = startbin*(22050/128);
-        maxIN = (26+startbin)*(22050/128);
-        maxOut= (startfreq^(1-(1/NFCratio)))*(maxIN^(1/NFCratio));
-        [I] = find(DSL.Cross_freq > maxOut);
-        DSL.TKgain(I+1) = 0;
-        w = FreqComp(x,Fs,NFCstart,NFCratio,26);
-        y = WDRC(DSL.Cross_freq,w,Fs,refdB,maxdB,DSL.TKgain,DSL.CR,DSL.TK,DSL.BOLT,att,rel);
-        z = FIRlowpass(y,22050,1024,maxOut);
-end
-if story == 0
-    audiowrite(strcat(DestDir,'\',lid,'\',sprintf('%s-%s-%s',stim(1:end-4),Proc,EARlabel(1))),z,Fs, ...
-        'bitsPerSample', Nbits);
-else
-    audiowrite(strcat(tempdir,stim),z,Fs, ...
-        'bitsPerSample', Nbits);
-end
 
 function [Thresh, ThreshSPL, TK, TKgain, BOLT, CR, TargetAvg, TargetLo, TargetHi] = readDSLfile(filename)
 a = csvread(filename,1,1);
@@ -1476,13 +1197,6 @@ RMS = norm(x)/sqrt(length(x));
 
 function y = round2(x,dec)
 y = (round(x.*(10.^dec)))./(10.^dec);
-
-function osc_out = sinoscillator(freq,mag,t,Fs,pXk)
-temp = zeros(length(freq),length(t));
-for k = 1:length(freq)
-    temp(k,:) = mag(k)*sin(Fs*freq(k)*t+pXk(k));
-end
-osc_out = sum(temp,1);
 
 function peak = Smooth_ENV(x,attack,release,Fs)
 % Compute the filter time constants
@@ -1730,69 +1444,6 @@ end
 g=10.^(gdB/20);
 comp=x.*g;
 
-function [comp,gdB,pBOLT,OCLcnt] = WDRC_Circuit2(x,TKgain,pdB,TK,CR,BOLT)
-nsamp=length(x);
-if TK+TKgain > BOLT, TK = BOLT-TKgain; end
-TKgain_origin = TKgain + (TK.*(1-1./CR));
-gdB = zeros(nsamp,1);
-pBOLT = CR*(BOLT - TKgain_origin);
-OCLcnt = 0;
-parfor n=1:nsamp
-    if ((pdB(n) < TK) && (CR >= 1))
-        gdB(n)= TKgain;
-    elseif (pdB(n) > pBOLT)
-        gdB(n) = BOLT+((pdB(n)-pBOLT)*1/10)-pdB(n);
-        OCLcnt = OCLcnt+1;
-    else
-        gdB(n) = ((1./CR)-1).*pdB(n) + TKgain_origin;
-    end
-end
-g=10.^(gdB/20);
-comp=x.*g;
-
-function [Y,y,scale,x_dB,pdB,gdB,gdBnominal,BOLT,pBOLT,OCLcnt] = WDRC_diagnostics(Cross_freq,x,Fs,rmsdB,maxdB,TKgain,CR,TK,BOLT,att,rel)
-Nchannel = length(TKgain);
-CL_TK = 105;
-CL_CR = 10;
-old_dB = maxdB + 20.*log10(sqrt(mean(x.^2)));
-scale = 10.^((rmsdB - old_dB)/20);
-x = x.*scale;
-in_peak = Smooth_ENV(x,1,50,Fs);
-in_pdB = maxdB + 20.*log10(in_peak);
-[in_c,in_gdB] = WDRC_Circuit2(x,0,in_pdB,CL_TK,CL_CR,CL_TK);
-if Nchannel > 1
-    [y] = HA_fbank2(Cross_freq,in_c,Fs);    % Nchannel FIR filter bank
-else
-    y = in_c;
-end
-nsamp = size(y,1);
-pdB = zeros(nsamp, Nchannel);
-OCLcnt(1:Nchannel) = 0;
-parfor n = 1:Nchannel
-    if BOLT(n) > CL_TK, BOLT(n) = CL_TK; end
-    if TKgain(n) < 0, BOLT(n) = BOLT(n) + TKgain(n); end
-    x_dB(:,n) = maxdB + 20.*log10(abs(y(:,n)));
-    peak = Smooth_ENV(y(:,n),att,rel,Fs);
-    pdB(:,n) = maxdB+20.*log10(peak);
-    [c(:,n),gdB(:,n),pBOLT(n),OCLcnt(n)]=WDRC_Circuit2(y(:,n),TKgain(n),pdB(:,n),TK(n),CR(n),BOLT(n));
-    [~,gdBnominal(:,n),~,~]=WDRC_Circuit2(ones(121,1),TKgain(n),0:120,TK(n),CR(n),BOLT(n));
-end
-comp=sum(c,2);
-out_peak = Smooth_ENV(comp,1,50,Fs);
-out_pdB = maxdB + 20.*log10(out_peak);
-[out_c,out_gdB,out_pBOLT,out_OCLcnt] = WDRC_Circuit2(comp,0,out_pdB,CL_TK,CL_CR,CL_TK);
-[~,out_gdBnominal,~,~] = WDRC_Circuit2(ones(121,1),0,0:120,CL_TK,CL_CR,CL_TK);
-Y = out_c(89:end-88);
-y(:,Nchannel+1) = [zeros(1,88) x' zeros(1,88)]';
-x_dB(:,Nchannel+1) = maxdB + 20.*log10(abs(comp));
-pdB(:,Nchannel+1) = out_pdB;
-gdB(:,Nchannel+1) = out_gdB;
-gdBnominal(:,Nchannel+1) = out_gdBnominal;
-BOLT(Nchannel+1) = CL_TK;
-pBOLT(Nchannel+1) = out_pBOLT;
-OCLcnt(Nchannel+1) = out_OCLcnt;
-OCLcnt = OCLcnt./nsamp;
-
 function DSL = WDRC_Tune(att,rel,Nchannel,lid,ear,DSLdir,audiodir,rolloff)
 [cent_freq,thirdOCTthr] = GetThresh(3,ear,audiodir,sprintf('%s Audiogram',lid));
 SENNcorrection = [1.2, 1.2, 2.29, 3.72, 5.4, 5.04, 4.86, 5.5, 6.75, 8.94, 12.7, 12.95, 12.6, 9.2, 5.95, 4.26, 13.1]+3;
@@ -1895,93 +1546,3 @@ DSL.TargetHi = TargetHi;
 DSL.TargetBOLT = TargetBOLT;
 DSL.Thresh = thirdOCTthr;
 DSL.banana = banana;
-
-function WDRCvisual(x,Fs,refdB,Proc,NFCstart,NFCratio,DSL,att,rel)
-maxdB = 119;
-if Fs ~= 22050
-    figure = warndlg('The sampling rate needs to be 22.05 kHz.','SAMPLING RATE ERROR');
-    uiwait(figure)
-    HAsim3
-end
-switch Proc
-    case 'EBW'
-        z = FIRlowpass(x,22050,1024,10000);
-    case 'RBW'
-        z = FIRlowpass(x,22050,1024,5000);
-    case 'NFC'
-        startbin = round((NFCstart/(22050/128)));
-        startfreq = startbin*(22050/128);
-        maxIN = (26+startbin)*(22050/128);
-        maxOut= (startfreq^(1-(1/NFCratio)))*(maxIN^(1/NFCratio));
-        w = FreqComp(x,Fs,NFCstart,NFCratio,26);
-        z = FIRlowpass(w,22050,1024,maxOut);
-        I = find(DSL.Cross_freq > maxOut);
-        DSL.TKgain(I+1) = 0;
-end
-[~,y,~,x_dB,pdB,gdB,gdBnominal,BOLT,pBOLT,OCLcnt] = WDRC_diagnostics(DSL.Cross_freq,z,Fs,refdB,maxdB,DSL.TKgain,DSL.CR,DSL.TK,DSL.BOLT,att,rel);
-in = 0:120;
-DSL.TK(end+1) = BOLT(end);
-DSL.TKgain(end+1) = 0;
-for c = 1:length(DSL.TKgain)
-    if c < length(DSL.TKgain)
-        if DSL.TK(c)+DSL.TKgain(c) > BOLT(c)
-            TK(c) = BOLT(c)-DSL.TKgain(c)-0.5;
-        else
-            TK(c) = DSL.TK(c);
-        end
-        newfigure(num2str(c));
-    else
-        TK(c) = DSL.TK(c);
-        newfigure(99);
-    end
-    axes('Parent',gcf,'PlotBoxAspectRatio',[1 1 1],'FontSize',20);
-    hold on
-    plot(x_dB(89:end-88,c),x_dB(89:end-88,c)+gdB(89:end-88,c),'r.')
-    plot(0:120,gdBnominal(:,c)+in','k','LineWidth',2)
-    axis([0 120 0 120])
-    plot(floor(TK(c))+0.5,((DSL.TKgain(c)))+in(ceil(TK(c)))+0.5,'ko','MarkerSize',12);
-    text(TK(c)-2,gdBnominal(round(TK(c)),c)+in(round(TK(c))+4),'TK','FontSize',16)
-    plot(pBOLT(c),BOLT(c),'k*','MarkerSize',12)
-    text(pBOLT(c)-3.5,BOLT(c)+3,'BOLT','FontSize',16)
-    text(pBOLT(c),BOLT(c)-5,strcat(num2str(round2(OCLcnt(c)*100,1)),'% in OCL'),'FontSize',16)
-    axis square
-    xlabel('Input, dB SPL','FontWeight','bold','FontSize',24);
-    ylabel('Output, dB SPL','FontWeight','bold','FontSize',24);
-    if c < length(DSL.TKgain)
-        title(sprintf('Channel %s',num2str(c)),'FontSize',28,'FontWeight','bold');
-    else
-        title(sprintf('Broadband OCL'),'FontSize',28,'FontWeight','bold');
-    end
-    if c < length(DSL.TKgain)
-        newfigure2(num2str(c));
-    else
-        newfigure2(99);
-    end
-    subplot(5,1,1),plot(1/Fs:1/Fs:(length(x_dB)-176)/Fs,y(89:end-88,c));
-    title('Input','FontSize',12,'FontWeight','bold')
-    axis([0 (length(x_dB)-176)/Fs -(exp(ceil(log(max(abs(y(89:end-88,c))))))) (exp(ceil(log(max(abs(y(89:end-88,c)))))))])
-    
-    subplot(5,1,2),plot(1/Fs:1/Fs:(length(x_dB)-176)/Fs,pdB(89:end-88,c));
-    title('Smoothed Envelope, dB SPL','FontSize',12,'FontWeight','bold')
-    axis([0 (length(x_dB)-176)/Fs max([0,(5*(floor(min(pdB(200:end-88,c)/5))))]) (5*(ceil(max(pdB(200:end-88,c)/5))))])
-    
-    subplot(5,1,3),plot(1/Fs:1/Fs:(length(x_dB)-176)/Fs,gdB(89:end-88,c));
-    title('Gain, dB','FontSize',12,'FontWeight','bold')
-    if min(gdB) > max(gdB)
-        axis([0 (length(x_dB)-176)/Fs max([0,(5*(floor(min(gdB(200:end-88,c)/5))))]) (5*(ceil(max(gdB(200:end-88,c)/5))))])
-    else
-        axis tight
-    end
-    subplot(5,1,4),plot(1/Fs:1/Fs:(length(x_dB)-176)/Fs,gdB(89:end-88,c)+pdB(89:end-88,c));
-    title('Smoothed Envelope + Gain, dB SPL','FontSize',12,'FontWeight','bold')
-    axis([0 (length(x_dB)-176)/Fs max([0,(5*(floor(min(gdB(200:end-88,c)+pdB(200:end-88,c))/5)))]) (5*(ceil(max(gdB(200:end-88,c)+pdB(200:end-88,c))/5)))])
-    subplot(5,1,5),plot(1/Fs:1/Fs:(length(x_dB)-176)/Fs,y(89:end-88,c).*(10.^(gdB(89:end-88,c)./20)));
-    title('Output, dB SPL','FontSize',12,'FontWeight','bold')
-    xlabel('Time, s','FontSize',18,'FontWeight','bold','Color','red')
-    axis([0 (length(x_dB)-176)/Fs -(exp(ceil(log(max(abs((y(89:end-88,c).*(10.^(gdB(89:end-88,c)./20))))))))) (exp(ceil(log(max(abs((y(89:end-88,c).*(10.^(gdB(89:end-88,c)./20)))))))))])
-    if c < length(DSL.TKgain)
-        annotation('textbox',[0.45 0.96 0.12 0.03],'String',{sprintf('Channel %s',num2str(c))},'FontWeight','bold','FontSize',22,'FitBoxToText','off','LineStyle','none','Color',[1 0 0]);
-    else
-        annotation('textbox',[0.45 0.96 0.12 0.03],'String',{'Broadband OCL'},'FontWeight','bold','FontSize',18,'FitBoxToText','off','LineStyle','none','Color',[1 0 0]);
-    end
-end
