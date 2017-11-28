@@ -6,62 +6,53 @@ end
 load([pathname, protocolFileName]);
 answer = inputdlg('Enter Subject ID');
 listenerID = answer{1};
-LOGIN = 1;
-while LOGIN == 1
-    main = menu4( ...
-        'WHAT DO YOU WANT TO DO?', ...
-        'Enter Audiometric Thresholds', ...
-        'Run DSLv5.0', ...
-        'Generate Prescription', ...
-        'Process Stimuli', ...
-        'Load Speechmap', ...
-        'WDRC Diagnostics', ...
-        'Run another subject/protocol', ...
-        'Downsample to 22.05 kHz', ...
-        'Exit to MATLAB');
-    switch main
-        case 1
-            [HL, freq] = Audiogram(listenerID, audiodir); %#ok
-            save([audiodir, filesep(), listenerID, ' Audiogram'], 'HL', 'freq');
-        case 2
-            ear = menu4('Select Ear', 'RIGHT', 'LEFT') - 1;
-            [freq, thr] = GetThresh(1, ear, audiodir, [listenerID, ' Audiogram']);
-            if ear == 0
-                fprintf('\n \t Thresholds in dB SPL for the RIGHT ear for subject %s:\n\n', listenerID);
-            else
-                fprintf('\n \t Thresholds in dB SPL for the LEFT ear for subject %s: \n\n', listenerID);
+main = menu4( ...
+    'WHAT DO YOU WANT TO DO?', ...
+    'Enter Audiometric Thresholds', ...
+    'Run DSLv5.0', ...
+    'Generate Prescription');
+switch main
+    case 1
+        [HL, freq] = Audiogram(listenerID, audiodir); %#ok
+        save([audiodir, filesep(), listenerID, ' Audiogram'], 'HL', 'freq');
+    case 2
+        ear = menu4('Select Ear', 'RIGHT', 'LEFT') - 1;
+        [freq, thr] = GetThresh(1, ear, audiodir, [listenerID, ' Audiogram']);
+        if ear == 0
+            fprintf('\n \t Thresholds in dB SPL for the RIGHT ear for subject %s:\n\n', listenerID);
+        else
+            fprintf('\n \t Thresholds in dB SPL for the LEFT ear for subject %s: \n\n', listenerID);
+        end
+        for i = 1:length(thr)
+            fprintf('\t \t \t \t %g Hz, %g dB SPL \n\n', freq(i), thr(i));
+        end
+        fprintf('***** USE THE ARROW to select %d for the Number of Channels ***** \n\n', Nchannel);
+        fprintf('***** Save DSL output in the folder: ''%s'' ***** \n\n', DSLdir);
+        if ear == 0
+            fprintf('***** Save DSL output with the name: ''%s right'' ***** \n\n', listenerID);
+        else
+            fprintf('***** Save DSL output with the name: ''%s left'' ***** \n\n', listenerID);
+        end
+        open('C:\HA Simulator\DSL\DSL.exe');
+    case 3
+        fnameR = [listenerID, ' right.csv'];
+        fnameL = [listenerID, ' left.csv'];
+        d = dir([DSLdir, filesep(), '*.csv']);
+        fileNames = {d.name};
+        for n = 1:length(fileNames)
+            sameR = strcmpi(fnameR, fileNames(n));
+            sameL = strcmpi(fnameL, fileNames(n));
+            if sameR
+                DSL = WDRC_Tune(att, rel, Nchannel, listenerID, 0, DSLdir, audiodir);
+                save([DSLdir, filesep(), listenerID, ' right DSL'], 'DSL');
+                saveas(gcf, [DSLdir, filesep(), listenerID, ' right Speechmap'], 'fig');
             end
-            for i = 1:length(thr)
-                fprintf('\t \t \t \t %g Hz, %g dB SPL \n\n', freq(i), thr(i));
+            if sameL
+                DSL = WDRC_Tune(att,rel,Nchannel,listenerID,1,DSLdir,audiodir);
+                save([DSLdir, filesep(), listenerID, ' left DSL'], 'DSL');
+                saveas(gcf, [DSLdir, filesep(), listenerID, ' left Speechmap'], 'fig');
             end
-            fprintf('***** USE THE ARROW to select %d for the Number of Channels ***** \n\n', Nchannel);
-            fprintf('***** Save DSL output in the folder: ''%s'' ***** \n\n', DSLdir);
-            if ear == 0
-                fprintf('***** Save DSL output with the name: ''%s right'' ***** \n\n', listenerID);
-            else
-                fprintf('***** Save DSL output with the name: ''%s left'' ***** \n\n', listenerID);
-            end
-            open('C:\HA Simulator\DSL\DSL.exe');
-        case 3
-            fnameR = [listenerID, ' right.csv'];
-            fnameL = [listenerID, ' left.csv'];
-            d = dir([DSLdir, filesep(), '*.csv']);
-            fileNames = {d.name};
-            for n = 1:length(fileNames)
-                sameR = strcmpi(fnameR, fileNames(n));
-                sameL = strcmpi(fnameL, fileNames(n));
-                if sameR
-                    DSL = WDRC_Tune(att, rel, Nchannel, listenerID, 0, DSLdir, audiodir);
-                    save([DSLdir, filesep(), listenerID, ' right DSL'], 'DSL');
-                    saveas(gcf, [DSLdir, filesep(), listenerID, ' right Speechmap'], 'fig');
-                end
-                if sameL
-                    DSL = WDRC_Tune(att,rel,Nchannel,listenerID,1,DSLdir,audiodir);
-                    save([DSLdir, filesep(), listenerID, ' left DSL'], 'DSL');
-                    saveas(gcf, [DSLdir, filesep(), listenerID, ' left Speechmap'], 'fig');
-                end
-            end
-    end
+        end
 end
 
 function [HL, audiogramFrequencies] = Audiogram(listenerID, pathname, altdir, altdir2, HL)
@@ -1520,7 +1511,7 @@ y = WDRC(Cross_freq,x,Fs,rmsdB,maxdB,TKgain,CR,TK,adjBOLT,att,rel);
 T = round(0.128.*Fs);
 t = 0:T;
 tj = t./Fs;
-parfor n = 1:length(cent_freq)
+for n = 1:length(cent_freq)
     MPOsignal = zeros(1,T);
     MPOsignal = sin(2*pi*cent_freq(n)*tj);
     w = WDRC(Cross_freq,MPOsignal',Fs,90,maxdB,TKgain,CR,TK,adjBOLT,att,rel);
