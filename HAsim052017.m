@@ -360,113 +360,6 @@ if proceed == 1
     end
 end
 
-function banana = DSLspeechmap(maxdB, x, Fs, lid, ear, Thresh, TargetAvg, BOLT, MPO, DSLdir, att, rel, Nchannel)
-lower = 30;
-upper = 99;
-SENNcorrection = [1.2, 1.2, 2.29, 3.72, 5.4, 5.04, 4.86, 5.5, 6.75, 8.94, 12.7, 12.95, 12.6, 9.2, 5.95, 4.26, 13.1]+3;
-N = 3;
-f = [200 250 315, 400 500 630, 800 1000 1250, 1600 2000 2500, 3150 4000 5000, 6300 8000];
-nF = 17;
-ff = (1000).*((2^(1/3)).^(-7:nF-8));
-B(1:nF,1:7) = 0;
-A(1:nF,1:7) = 0;
-for i = nF:-1:10
-    [B(i,1:7),A(i,1:7)] = oct3dsgn(ff(i),Fs,N);
-end
-for j = 0:2
-    B((j.*3)+1,:) = B(10,:);
-    B((j.*3)+2,:) = B(11,:);
-    B((j.*3)+3,:) = B(12,:);
-    A((j.*3)+1,:) = A(10,:);
-    A((j.*3)+2,:) = A(11,:);
-    A((j.*3)+3,:) = A(12,:);
-end
-winsize = round(Fs.*0.128);
-stepsize = winsize./2;
-Nsamples = floor(length(x)./stepsize)-1;
-w = hann(winsize);
-levels(1:Nsamples,1:nF) = 0;
-h = timebar('Speechmap','Progress');
-for n = 1:Nsamples
-    startpt = ((n-1).*stepsize)+1;
-    y = w.*x(startpt:(startpt+winsize-1));
-    for i = nF:-1:10
-        z = filter(B(i,:),A(i,:),y);
-        P(n,i) = sum(z.^2)/length(z);
-    end
-    for j = 2:-1:0
-        y = decimate(y,2);
-        i = (j.*3)+3;
-        z = filter(B(i,:),A(i,:),y);
-        P(n,i) = sum(z.^2)/length(z);
-        i = (j.*3)+2;
-        z = filter(B(i,:),A(i,:),y);
-        P(n,i) = sum(z.^2)/length(z);
-        i = (j.*3)+1;
-        z = filter(B(i,:),A(i,:),y);
-        P(n,i) = sum(z.^2)/length(z);
-    end
-    timebar(h,n/Nsamples);
-end
-close(h)
-idx = P>0;
-minP = min(min(P(idx)));
-for n = 1:nF
-    idx = (P(:,n)>0);
-    P(~idx,n) = minP*ones(sum(~idx),1);
-end
-levels = maxdB+10*log10(P);
-for n = 1:nF
-    banana(1,n) = prctile(levels(:,n),upper)+SENNcorrection(n);
-end
-for n = 1:nF
-    banana(2,n) = maxdB+10*log10((mean(P(:,n))))+SENNcorrection(n);
-end
-for n = 1:nF
-    banana(3,n) = prctile(levels(:,n),lower)+SENNcorrection(n);
-end
-axes('Xscale','log')
-hold on
-for i = 1:nF-1
-    H = patch([f(i),f(i),f(i+1),f(i+1)],[banana(3,i),banana(1,i),banana(1,i+1),banana(3,i+1)],[0.85 0.85 0.85]);
-    set(H,'LineStyle','none');
-end
-h(1) = semilogx(f,banana(2,:));
-set(h(1),'Linestyle','-','color','k','linewidth',4);
-if ear == 0
-    h(2) = semilogx(f,Thresh,'ro');
-    set(h(2),'MarkerSize',12,'linewidth',3);
-else
-    h(2) = semilogx(f,Thresh,'bx');
-    set(h(2),'MarkerSize',15,'linewidth',3);
-end
-h(3) = semilogx(f,TargetAvg,'g+');
-set(h(3),'MarkerSize',15,'linewidth',3);
-h(4) = semilogx(f,MPO,'m.');
-set(h(4),'MarkerSize',25,'linewidth',1.5);
-h(5) = semilogx(f,BOLT+10','k*');
-set(h(5),'MarkerSize',10,'linewidth',1.5);
-set(0,'Units','pixels');
-scnsize = get(0,'ScreenSize');
-scnsize(1:2) = [0 0];
-set(gcf,'Position',scnsize)
-axis([185,8500,0,120])
-set(gca,'fontsize',16,'xTick',[250,500,1000,2000,4000,8000])
-set(gca,'fontsize',16,'yTick',0:10:120)
-xlabel('Frequency, Hertz','fontsize',20)
-ylabel('Output Level, dB SPL','fontsize',20)
-legend(h,'LTASS','Threshold','DSL Targets','MPO','UCL','Location','Southeast');
-title(sprintf('Speechmap for %s',lid),'fontsize',18,'fontweight','bold');
-text(4000,30,sprintf('%sms/%sms, %s channels',num2str(att),num2str(rel),num2str(Nchannel)));
-if ear == 0
-    earlabel = 'right';
-else
-    earlabel = 'left';
-end
-orient landscape
-rect = [1, 1, 1, 1];
-saveas(gcf,sprintf('%s/%s Speechmap (%s ear)',DSLdir,lid,earlabel),'pdf');
-
 function [frequency,thrCorr] = GetThresh(thrType,ear,audiodir,filename)
 if nargin < 2
     ear = menu2('Select Test Ear','RIGHT','LEFT')-1;
@@ -560,7 +453,7 @@ end
 Select_channel(end) = length(cent_freq);
 if Nchannel == 16, Select_channel = 2:17; end
 
-function [y] = HA_fbank2(Cross_freq, x, Fs)  % 17 freq. bands
+function y = HA_fbank2(Cross_freq, x, Fs)  % 17 freq. bands
 % James M. Kates, 12 December 2008.
 % Last Modified by: J. Alexander 8/27/10
 if Fs < 22050
@@ -1183,9 +1076,6 @@ for F = 1:10
     end
 end
 
-function RMS = rms2(x)
-RMS = norm(x)/sqrt(length(x));
-
 function y = round2(x,dec)
 y = (round(x.*(10.^dec)))./(10.^dec);
 
@@ -1262,131 +1152,6 @@ for n = 1:nF
     banana(n) = maxdB+10*log10((mean(P(:,n))));
 end
 
-function h = timebar(message,name,update_rate)
-%    Version: 2.0
-%    Version History:
-%    1.0   2002-01-18   Initial release
-%    2.0   2002-01-21   Added update rate option
-%
-%    Copyright 2002, Chad English
-%    cenglish@myrealbox.com
-if nargin < 3                                               % If update rate is not input
-    update_rate = 0.1;                                      %    set it to 0.1 seconds
-end
-if ~ishandle(message)                                       % If first input is not a timebar handle,
-    winwidth = 300;                                         % Width of timebar window
-    winheight = 75;                                         % Height of timebar window
-    screensize = get(0,'screensize');                       % User's screen size [1 1 width height]
-    screenwidth = screensize(3);                            % User's screen width
-    screenheight = screensize(4);                           % User's screen height
-    winpos = [0.5*(screenwidth-winwidth), ...
-        0.5*(screenheight-winheight), winwidth, winheight];  % Position of timebar window origin
-    if nargin < 2
-        name = '';                                          % If timebar name not input, set blank
-    end
-    wincolor = 0.75*[1 1 1];                                % Define window color
-    est_text = 'Estimated time remaining: ';                % Set static estimated time text
-    h = figure('menubar','none',...                         % Turn figure menu display off
-        'numbertitle','off',...                             % Turn figure numbering off
-        'name',name,...                                     % Set the figure name to input name
-        'position',winpos,...                               % Set the position of the figure as above
-        'color',wincolor,...                                % Set the figure color
-        'resize','off',...                                  % Turn of figure resizing
-        'tag','timebar');                                   % Tag the figure for later checking
-    userdata.text(1) = uicontrol(h,'style','text',...       % Prepare message text (set the style to text)
-        'pos',[10 winheight-30 winwidth-20 20],...          % Set the textbox position and size
-        'hor','center',...                                  % Center the text in the textbox
-        'backgroundcolor',wincolor,...                      % Set the textbox background color
-        'foregroundcolor',0*[1 1 1],...                     % Set the text color
-        'string',message);                                  % Set the text to the input message
-    userdata.text(2) = uicontrol(h,'style','text',...       % Prepare static estimated time text
-        'pos',[10 5 winwidth-20 20],...                     % Set the textbox position and size
-        'hor','left',...                                    % Left align the text in the textbox
-        'backgroundcolor',wincolor,...                      % Set the textbox background color
-        'foregroundcolor',0*[1 1 1],...                     % Set the text color
-        'string',est_text);             % Set the static text for estimated time
-    userdata.text(3) = uicontrol(h,'style','text',...       % Prepare estimated time
-        'pos',[135 5 winwidth-145 20],...                   % Set the textbox position and size
-        'hor','left',...                                    % Left align the text in the textbox
-        'backgroundcolor',wincolor,...                      % Set the textbox background color
-        'foregroundcolor',0*[1 1 1],...                     % Set the text color
-        'string','');                                       % Initialize the estimated time as blank
-    userdata.text(4) = uicontrol(h,'style','text',...       % Prepare the percentage progress
-        'pos',[winwidth-35 winheight-50 25 20],...          % Set the textbox position and size
-        'hor','right',...                                   % Left align the text in the textbox
-        'backgroundcolor',wincolor,...                      % Set the textbox background color
-        'foregroundcolor',0*[1 1 1],...                     % Set the textbox foreground color
-        'string','');                                       % Initialize the progress text as blank
-    userdata.axes = axes('parent',h,...                     % Set the progress bar parent to the figure
-        'units','pixels',...                                % Provide axes units in pixels
-        'pos',[10 winheight-45 winwidth-50 15],...          % Set the progress bar position and size
-        'xlim',[0 1],...                                    % Set the range from 0 to 1
-        'box','on',...                                      % Turn on axes box (to see where 100% is)
-        'color',[1 1 1],...                                 % Set plot background color to white
-        'xtick',[],'ytick',[]);                             % Turn off axes tick marks and labels
-    userdata.bar = patch([0 0 0 0 0],[0 1 1 0 0],'r');      % Initialize progress bar to zero area
-    userdata.time = clock;                                  % Record the current time
-    userdata.inc = clock;                                   % Set incremental clock to current time
-    set(h, 'userdata', userdata)                            % Allow access to the text and axes settings
-else                                                        % If first input is a timebar handle, update
-    pause(10e-100)                                          % Message, bar, and static text won't display
-    %    without arbitrary pause (don't know why)
-    h = message;                                            % Set handle to first input
-    progress = name;                                        % Set progress to second input
-    
-    if ~strcmp(get(h,'tag'), 'timebar')                     % Check object tag to see if it is a timebar
-        error('Handle is not to a timebar window')          % If not a timebar, report error and stop
-    end
-    userdata = get(h,'userdata');                           % Get the userdata included with the timebar
-    inc = clock-userdata.inc;                               % Calculate time increment since last update
-    inc_secs = inc(3)*3600*24 + inc(4)*3600 + ...
-        inc(5)*60 + inc(6);                                 % Convert the increment to seconds
-    if inc_secs > update_rate || progress == 1           % Only update at update rate or 100% complete
-        userdata.inc = clock;                               % If updating, reset the increment clock
-        set(h,'userdata',userdata)                          % Update userdata with the new clock setting
-        tpast = clock-userdata.time;                        % Calculate time since timebar initialized
-        seconds_past = tpast(3)*3600*24 + tpast(4)*3600 + ...
-            tpast(5)*60 + tpast(6);                         % Transform passed time into seconds
-        estimated_seconds = seconds_past*(1/progress-1);    % Estimate the time remaining in seconds
-        hours = floor(estimated_seconds/3600);              % Calculate integer hours of estimated time
-        minutes = floor((estimated_seconds-3600*hours)/60); % Calculate integer minutes of estimated time
-        seconds = floor(estimated_seconds-3600*hours- ...
-            60*minutes);                                    % Calculate integer seconds of estimated time
-        tenths = floor(10*(estimated_seconds - ...
-            floor(estimated_seconds)));                     % Calculate tenths of seconds (as integer)
-        if progress > 1                                     % Check if input progress is > 1
-            time_message = ' Error!  Progress > 1!';        % If >1, print error to estimated time
-            time_color = 'r';                               %    in red
-        else
-            if hours < 10 
-                h0 = '0'; 
-            else
-                h0 = '';
-            end       % Put leading zero on hours if < 10
-            if minutes < 10 
-                m0 = '0'; 
-            else
-                m0 = '';
-            end     % Put leading zero on minutes if < 10
-            if seconds < 10 
-                s0 = '0'; 
-            else
-                s0 = '';
-            end     % Put leading zero on seconds if < 10
-            time_message = strcat(h0,num2str(hours),':',m0,...
-                num2str(minutes),':',s0,num2str(seconds),...
-                '.',num2str(tenths),' (hh:mm:ss.t)');       % Format estimated time as hh:mm:ss.t
-            time_color = 'k';                               % Format estimated time text as black
-        end
-        
-        set(userdata.bar,'xdata',[0 0 progress progress 0]) % Update progress bar
-        set(userdata.text(3),'string',time_message,...
-            'foregroundcolor',time_color);                  % Update estimated time
-        set(userdata.text(4),'string',...
-            strcat(num2str(floor(100*progress)),'%'));      % Update progress percentage
-    end
-end
-
 function y = WDRC(Cross_freq,x,Fs,rmsdB,maxdB,TKgain,CR,TK,BOLT,att,rel)
 Nchannel = length(TKgain);
 CL_TK = 105; % Compression limiter threshold kneepoint
@@ -1396,7 +1161,7 @@ scale = 10.^((rmsdB - old_dB)/20);
 x = x.*scale;
 in_peak = Smooth_ENV(x,1,50,Fs);
 in_pdB = maxdB + 20.*log10(in_peak);
-[in_c,in_gdB] = WDRC_Circuit(x,0,in_pdB,CL_TK,CL_CR,CL_TK);
+[in_c,~] = WDRC_Circuit(x,0,in_pdB,CL_TK,CL_CR,CL_TK);
 if Nchannel > 1
     [y] = HA_fbank2(Cross_freq,in_c,Fs);    % Nchannel FIR filter bank
 else
@@ -1404,17 +1169,17 @@ else
 end
 nsamp = size(y,1);
 pdB = zeros(nsamp, Nchannel);
-parfor n = 1:Nchannel
+for n = 1:Nchannel
     if BOLT(n) > CL_TK, BOLT(n) = CL_TK; end
     if TKgain(n) < 0, BOLT(n) = BOLT(n) + TKgain(n); end
     peak = Smooth_ENV(y(:,n),att,rel,Fs);
     pdB(:,n) = maxdB+20.*log10(peak);
-    [c(:,n),gdB(:,n)]=WDRC_Circuit(y(:,n),TKgain(n),pdB(:,n),TK(n),CR(n),BOLT(n));
+    [c(:,n), ~]=WDRC_Circuit(y(:,n),TKgain(n),pdB(:,n),TK(n),CR(n),BOLT(n));
 end
 comp=sum(c,2);
 out_peak = Smooth_ENV(comp,1,50,Fs);
 out_pdB = maxdB + 20.*log10(out_peak);
-[out_c,out_gdB] = WDRC_Circuit(comp,0,out_pdB,CL_TK,CL_CR,CL_TK);
+[out_c,~] = WDRC_Circuit(comp,0,out_pdB,CL_TK,CL_CR,CL_TK);
 y = out_c(89:end-88);
 
 function [comp,gdB] = WDRC_Circuit(x,TKgain,pdB,TK,CR,BOLT)
@@ -1439,9 +1204,9 @@ function DSL = WDRC_Tune(att,rel,Nchannel,lid,ear,DSLdir,audiodir,rolloff)
 [cent_freq,thirdOCTthr] = GetThresh(3,ear,audiodir,sprintf('%s Audiogram',lid));
 SENNcorrection = [1.2, 1.2, 2.29, 3.72, 5.4, 5.04, 4.86, 5.5, 6.75, 8.94, 12.7, 12.95, 12.6, 9.2, 5.95, 4.26, 13.1]+3;
 if ear == 0
-    [~,ThreshSPL,vTK,vTKgain,TargetBOLT,vCR,TargetAvg,TargetLo,TargetHi] = readDSLfile(strcat(DSLdir,'\',sprintf('%s right.csv',lid)));
+    [~,ThreshSPL,vTK,vTKgain,TargetBOLT,vCR,TargetAvg,~,~] = readDSLfile(strcat(DSLdir,'\',sprintf('%s right.csv',lid)));
 else
-    [~,ThreshSPL,vTK,vTKgain,TargetBOLT,vCR,TargetAvg,TargetLo,TargetHi] = readDSLfile(strcat(DSLdir,'\',sprintf('%s left.csv',lid)));
+    [~,ThreshSPL,vTK,vTKgain,TargetBOLT,vCR,TargetAvg,~,~] = readDSLfile(strcat(DSLdir,'\',sprintf('%s left.csv',lid)));
 end
 [oct_freq,OCTthr] = GetThresh(0,ear,audiodir,sprintf('%s Audiogram',lid));
 DSLoctThr = [ThreshSPL(2),ThreshSPL(5),ThreshSPL(8),ThreshSPL(11),ThreshSPL(14)];
@@ -1471,6 +1236,13 @@ if TargetAvg(17)-TargetAvg(16) > 10
 end
 [Cross_freq, Select_channel] = HA_channelselect(cent_freq, Nchannel);
 Select_channel = [0,Select_channel];
+TK = zeros(1, Nchannel);
+CR = zeros(1, Nchannel);
+BOLT = zeros(1, Nchannel);
+TKgain = zeros(1, Nchannel);
+adjBOLT = zeros(1, Nchannel);
+vTargetAvg = zeros(1, Nchannel);
+vSENNcorr = zeros(1, Nchannel);
 for n = 1:Nchannel
     TK(n) = mean(vTK(Select_channel(n)+1:Select_channel(n+1)));
     CR(n) = mean(vCR(Select_channel(n)+1:Select_channel(n+1)));
@@ -1487,11 +1259,9 @@ minGain = zeros(size(vSENNcorr));%-vSENNcorr; changed April 16, 2016 by Marc Bre
 %minGain(1:round(Nchannel/4)) = minGain(1:round(Nchannel/4))-10*log10(Nchannel); % Correct for channel overlap
 maxGain = 55;
 if nargin > 7
-    [I] = find(Cross_freq > rolloff);
+    I = find(Cross_freq > rolloff);
     TKgain(I+1) = minGain(I+1);
     LastChannel = I(1);
-    [J] = find(cent_freq > rolloff);
-    vSENNcorr(LastChannel) = mean(SENNcorrection(Select_channel(n)+1:J(1)-1));
 else
     LastChannel = Nchannel;
 end
@@ -1507,21 +1277,6 @@ for k = 1:2
         if TKgain(n) > maxGain, TKgain(n) = maxGain; end
     end
 end
-y = WDRC(Cross_freq,x,Fs,rmsdB,maxdB,TKgain,CR,TK,adjBOLT,att,rel);
-T = round(0.128.*Fs);
-t = 0:T;
-tj = t./Fs;
-for n = 1:length(cent_freq)
-    MPOsignal = zeros(1,T);
-    MPOsignal = sin(2*pi*cent_freq(n)*tj);
-    w = WDRC(Cross_freq,MPOsignal',Fs,90,maxdB,TKgain,CR,TK,adjBOLT,att,rel);
-    MPO(n) = SENNcorrection(n) + maxdB + 20*log10(rms2(w));
-end
-if nargin > 7
-    banana = DSLspeechmap(maxdB,y,Fs,sprintf('%s (%s Hz Roll-off)',lid,num2str(rolloff)),ear,thirdOCTthr,TargetAvg,TargetBOLT,MPO,DSLdir,att,rel,Nchannel);
-else
-    banana = DSLspeechmap(maxdB,y,Fs,lid,ear,thirdOCTthr,TargetAvg,TargetBOLT,MPO,DSLdir,att,rel,Nchannel);
-end
 DSL.attack = att;
 DSL.release = rel;
 DSL.Nchannel = Nchannel;
@@ -1530,10 +1285,3 @@ DSL.TKgain = TKgain;
 DSL.CR = CR;
 DSL.TK = TK;
 DSL.BOLT = BOLT;
-DSL.MPO = MPO;
-DSL.TargetLo = TargetLo;
-DSL.TargetAvg = TargetAvg;
-DSL.TargetHi = TargetHi;
-DSL.TargetBOLT = TargetBOLT;
-DSL.Thresh = thirdOCTthr;
-DSL.banana = banana;
