@@ -43,12 +43,12 @@ switch main
             sameR = strcmpi(fnameR, fileNames(n));
             sameL = strcmpi(fnameL, fileNames(n));
             if sameR
-                DSL = WDRC_Tune(att, rel, Nchannel, listenerID, 0, DSLdir, audiodir);
+                DSL = WDRC_Tune(att, rel, Nchannel, listenerID, 0, DSLdir, audiodir); %#ok
                 save([DSLdir, filesep(), listenerID, ' right DSL'], 'DSL');
                 saveas(gcf, [DSLdir, filesep(), listenerID, ' right Speechmap'], 'fig');
             end
             if sameL
-                DSL = WDRC_Tune(att,rel,Nchannel,listenerID,1,DSLdir,audiodir);
+                DSL = WDRC_Tune(att,rel,Nchannel,listenerID,1,DSLdir,audiodir); %#ok
                 save([DSLdir, filesep(), listenerID, ' left DSL'], 'DSL');
                 saveas(gcf, [DSLdir, filesep(), listenerID, ' left Speechmap'], 'fig');
             end
@@ -350,7 +350,6 @@ if proceed == 1
     if nargin == 0, [file, pathname] = uiputfile('*.pdf', 'Save As'); listenerID = file(1:end-4); end
     title(sprintf('Audiogram for %s (%s)',char(listenerID),char(testdate)));
     orient landscape
-    rect = [1, 1, 1, 1];
     saveas(gcf, [pathname, listenerID, ' Audiogram ', testdate], 'pdf');
     if nargin > 2
         saveas(gcf, [altdir, listenerID, ' Audiogram ', testdate], 'pdf');
@@ -386,6 +385,7 @@ if ear == 1
 end
 thr1(thr1 == -99) = 999;
 thr2(thr2 == -99) = 999;
+thr = zeros(1, length(thr1));
 for i = 1:length(thr1)
     thr(i) = min([thr1(i),thr2(i)]);
     if thr(i) == 999, thr(i) = -99; end
@@ -624,9 +624,9 @@ if winWide < (2*uiBorder + textWide)
 end
 bottom = screensize(4) - (winHigh + winTopGap);
 set( menuFig, 'Position', [winLeftGap bottom winWide winHigh],'color','y' );
-xPos = ( uiBorder + [0:numCols-1]'*( btnWide + uiGap )*ones(1,numRows) )';
+xPos = ( uiBorder + (0:numCols-1)'*( btnWide + uiGap )*ones(1,numRows) )';
 xPos = xPos(1:numItems); % [ all 1st col; all 2nd col; ...; all nth col ]
-yPos = ( uiBorder + [numRows-1:-1:0]'*( btnHigh + uiGap )*ones(1,numCols) );
+yPos = ( uiBorder + (numRows-1:-1:0)'*( btnHigh + uiGap )*ones(1,numCols) );
 yPos = yPos(1:numItems); % [ rows 1:m; rows 1:m; ...; rows 1:m ]
 allBtn   = ones(numItems,1);
 uiPosMtx = [ xPos(:), yPos(:), btnWide*allBtn, btnHigh*allBtn ];
@@ -1101,7 +1101,6 @@ end
 
 function banana = speechmap2(maxdB,x,Fs)
 N = 3; 					% Order of analysis filters.
-f = [200 250 315, 400 500 630, 800 1000 1250, 1600 2000 2500, 3150 4000 5000, 6300 8000]; % Preferred labeling freq.
 nF = 17;
 ff = (1000).*((2^(1/3)).^(-7:nF-8)); 	% Exact center freq.
 % Design filters and compute RMS powers in 1/3-oct. bands
@@ -1124,7 +1123,6 @@ winsize = round(Fs.*0.128);
 stepsize = winsize./2;
 Nsamples = floor(length(x)./stepsize)-1;
 w = hann(winsize);
-levels(1:Nsamples,1:nF) = 0;
 for n = 1:Nsamples
     startpt = ((n-1).*stepsize)+1;
     y = w.*x(startpt:(startpt+winsize-1));
@@ -1148,6 +1146,7 @@ for n = 1:Nsamples
         P(n,i) = sum(z.^2)/length(z);
     end
 end
+banana = zeros(1, nF);
 for n = 1:nF
     banana(n) = maxdB+10*log10((mean(P(:,n))));
 end
@@ -1188,7 +1187,7 @@ if TK+TKgain > BOLT, TK = BOLT-TKgain; end
 TKgain_origin = TKgain + (TK.*(1-1./CR));
 gdB = zeros(nsamp,1);
 pBOLT = CR*(BOLT - TKgain_origin);
-parfor n=1:nsamp
+for n=1:nsamp
     if ((pdB(n) < TK) && (CR >= 1))
         gdB(n)= TKgain;
     elseif (pdB(n) > pBOLT)
