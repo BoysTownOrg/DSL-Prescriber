@@ -67,12 +67,9 @@ else
 end
 ear = 1;
 audiogramFrequencies = [250,500,750,1000,1500,2000,3000,4000,6000,8000]; %Audiogram frequencies
-scnsize = get(0, 'ScreenSize');
-scnsize(1:2) = [0 0];
-figure1 = figure( ...
-    'Position', scnsize, ...
-    'units', 'pixels');
-hold on
+mainFigure = figure( ...
+    'units', 'normalized', ...
+    'Position', [0, 0, 1, 1]);
 grid on
 axis square
 set(gca, ...
@@ -90,7 +87,7 @@ set(gca, ...
     'XTickLabel', ['250 '; '500 '; '1000'; '2000'; '4000'; '8000']);
 xlabel('Frequency, Hertz');
 ylabel('Hearing Level, dB HL');
-annotation(figure1,'textbox','String',{'Right TDH (o)'},...
+annotation(mainFigure,'textbox','String',{'Right TDH (o)'},...
     'HorizontalAlignment','center',...
     'FontWeight','bold',...
     'FontSize',14,...
@@ -99,7 +96,7 @@ annotation(figure1,'textbox','String',{'Right TDH (o)'},...
     'BackgroundColor',[1 1 1],...
     'Position',[0.83 0.79 0.17 0.07],...
     'Color',[1 0 0 ]);
-annotation(figure1,'textbox','String',{'Left TDH (x)'},...
+annotation(mainFigure,'textbox','String',{'Left TDH (x)'},...
     'HorizontalAlignment','center',...
     'FontWeight','bold',...
     'FontSize',14,...
@@ -108,7 +105,7 @@ annotation(figure1,'textbox','String',{'Left TDH (x)'},...
     'BackgroundColor',[1 1 1],...
     'Position',[0.83 0.728 0.17 0.07],...
     'Color',[0 0 1]);
-annotation(figure1,'textbox','String',{'Right Insert (\bullet)'},...
+annotation(mainFigure,'textbox','String',{'Right Insert (\bullet)'},...
     'HorizontalAlignment','center',...
     'FontWeight','bold',...
     'FontSize',14,...
@@ -117,7 +114,7 @@ annotation(figure1,'textbox','String',{'Right Insert (\bullet)'},...
     'BackgroundColor',[1 1 1],...
     'Position',[0.83 0.666 0.17 0.07],...
     'Color',[1 0 0 ]);
-annotation(figure1,'textbox','String',{'Left Insert (*)'},...
+annotation(mainFigure,'textbox','String',{'Left Insert (*)'},...
     'HorizontalAlignment','center',...
     'FontWeight','bold',...
     'FontSize',14,...
@@ -126,7 +123,7 @@ annotation(figure1,'textbox','String',{'Left Insert (*)'},...
     'BackgroundColor',[1 1 1],...
     'Position',[0.83 0.604 0.17 0.07],...
     'Color',[0 0 1]);
-annotation(figure1,'textbox','String',{'Right Bone ([)'},...
+annotation(mainFigure,'textbox','String',{'Right Bone ([)'},...
     'HorizontalAlignment','center',...
     'FontWeight','bold',...
     'FontSize',14,...
@@ -135,7 +132,7 @@ annotation(figure1,'textbox','String',{'Right Bone ([)'},...
     'BackgroundColor',[1 1 1],...
     'Position',[0.83 0.542 0.17 0.07],...
     'Color',[1 0 0 ]);
-annotation(figure1,'textbox','String',{'Left Bone (])'},...
+annotation(mainFigure,'textbox','String',{'Left Bone (])'},...
     'HorizontalAlignment','center',...
     'FontWeight','bold',...
     'FontSize',14,...
@@ -144,7 +141,7 @@ annotation(figure1,'textbox','String',{'Left Bone (])'},...
     'BackgroundColor',[1 1 1],...
     'Position',[0.83 0.48 0.17 0.07],...
     'Color',[0 0 1]);
-annotation(figure1,'textbox','String',{'Bone Unmasked (\^)'},...
+annotation(mainFigure,'textbox','String',{'Bone Unmasked (\^)'},...
     'HorizontalAlignment','center',...
     'FontWeight','bold',...
     'FontSize',12,...
@@ -152,7 +149,7 @@ annotation(figure1,'textbox','String',{'Bone Unmasked (\^)'},...
     'LineWidth',1,...
     'BackgroundColor',[1 1 1],...
     'Position',[0.83 0.418 0.17 0.07]);
-annotation(figure1,'textbox','String',{'Done'},...
+annotation(mainFigure,'textbox','String',{'Done'},...
     'HorizontalAlignment','center',...
     'FontWeight','bold',...
     'FontSize',16,...
@@ -169,7 +166,7 @@ if nargin < 5
     HL.Lbc(1:10) = -99;
     HL.Ubc(1:10) = -99;
 else
-    redraw_audiogram(HL, 0);
+    %redraw_audiogram(HL, 0);
 end
 done = 0;
 while done == 0
@@ -235,65 +232,65 @@ while done == 0
             case 1
                 if HL.Rtdh(F) < -10
                     if y >= -10
-                        h1 = plot(x-0.08,y,'ro');
+                        h1 = line(x-0.08,y, 'marker', 'o', 'color', 'r');
                         set(h1,'MarkerSize',12,'MarkerFaceColor','white','LineWidth',2);
                         HL.Rtdh(F) = y;
                     end
                 else
                     if button == 3, HL.Rtdh(F) = -99;
-                        redraw_audiogram(HL,done)
+                        %redraw_audiogram(HL,done)
                     elseif y == HL.Rtdh(F)
                     else
                         HL.Rtdh(F) = y;
-                        redraw_audiogram(HL,done)
+                        %redraw_audiogram(HL,done)
                     end
                 end
             case 2
                 if HL.Ltdh(F) < -10
                     if y >= -10
-                        h1 = plot(x+0.08,y,'bx');
+                        h1 = line(x+0.08,y, 'marker', 'x', 'color', 'b');
                         set(h1,'MarkerSize',17,'MarkerFaceColor','white','LineWidth',2);
                         HL.Ltdh(F) = y;
                     end
                 else
                     if button == 3, HL.Ltdh(F) = -99;
-                        redraw_audiogram(HL,done)
+                        %redraw_audiogram(HL,done)
                     elseif y == HL.Ltdh(F)
                     else
                         HL.Ltdh(F) = y;
-                        redraw_audiogram(HL,done)
+                        %redraw_audiogram(HL,done)
                     end
                 end
             case 3
                 if HL.Rins(F) < -10
                     if y >= -10
-                        h1 = plot(x-0.12,y+0.35,'ro');
+                        h1 = line(x-0.12,y+0.35, 'marker', 'o', 'color', 'r');
                         set(h1,'MarkerSize',8,'MarkerFaceColor','red','LineWidth',2);
                         HL.Rins(F) = y;
                     end
                 else
                     if button == 3, HL.Rins(F) = -99;
-                        redraw_audiogram(HL,done)
+                        %redraw_audiogram(HL,done)
                     elseif y == HL.Rins(F)
                     else
                         HL.Rins(F) = y;
-                        redraw_audiogram(HL,done)
+                        %redraw_audiogram(HL,done)
                     end
                 end
             case 4
                 if HL.Lins(F) < -10
                     if y >= -10
-                        h1 = plot(x+0.12,y+0.35,'b*');
+                        h1 = line(x+0.12,y+0.35, 'marker', '*', 'color', 'b');
                         set(h1,'MarkerSize',8,'MarkerFaceColor','blue','LineWidth',2);
                         HL.Lins(F) = y;
                     end
                 else
                     if button == 3, HL.Lins(F) = -99;
-                        redraw_audiogram(HL,done)
+                        %redraw_audiogram(HL,done)
                     elseif y == HL.Lins(F)
                     else
                         HL.Lins(F) = y;
-                        redraw_audiogram(HL,done)
+                        %redraw_audiogram(HL,done)
                     end
                 end
             case 5
@@ -304,11 +301,11 @@ while done == 0
                     end
                 else
                     if button == 3, HL.Rbc(F) = -99;
-                        redraw_audiogram(HL,done)
+                        %redraw_audiogram(HL,done)
                     elseif y == HL.Rbc(F)
                     else
                         HL.Rbc(F) = y;
-                        redraw_audiogram(HL,done)
+                        %redraw_audiogram(HL,done)
                     end
                 end
             case 6
@@ -319,11 +316,11 @@ while done == 0
                     end
                 else
                     if button == 3, HL.Lbc(F) = -99;
-                        redraw_audiogram(HL,done)
+                        %redraw_audiogram(HL,done)
                     elseif y == HL.Lbc(F)
                     else
                         HL.Lbc(F) = y;
-                        redraw_audiogram(HL,done)
+                        %redraw_audiogram(HL,done)
                     end
                 end
             case 7
@@ -334,11 +331,11 @@ while done == 0
                     end
                 else
                     if button == 3, HL.Ubc(F) = -99;
-                        redraw_audiogram(HL,done)
+                        %redraw_audiogram(HL,done)
                     elseif y == HL.Ubc(F)
                     else
                         HL.Ubc(F) = y;
-                        redraw_audiogram(HL,done)
+                        %redraw_audiogram(HL,done)
                     end
                 end
         end
@@ -346,7 +343,7 @@ while done == 0
 end
 proceed = menu3('Save Audiogram?','YES','NO');
 if proceed == 1
-    redraw_audiogram(HL,done)
+    %redraw_audiogram(HL,done)
     if nargin == 0, [file, pathname] = uiputfile('*.pdf', 'Save As'); listenerID = file(1:end-4); end
     title(sprintf('Audiogram for %s (%s)',char(listenerID),char(testdate)));
     orient landscape
@@ -367,14 +364,13 @@ if nargin == 3
     cd(audiodir);
 end
 if nargin < 4
-    [filename,audiodir] = uigetfile('*.mat', 'Select Data File');
-    if isequal(filename,0) || isequal(audiodir,0)
-        close
+    [filename, audiodir] = uigetfile('*.mat', 'Select Data File');
+    if ~audiodir
         return
     end
 end
 
-load(strcat(audiodir,'\',filename));
+load([audiodir, filesep(), filename]);
 if ear == 0 
     thr1 = HL.Rtdh; 
     thr2 = HL.Rins; 
