@@ -1,7 +1,5 @@
 classdef Audiogram < handle
     properties (Constant)
-        LOWER_FREQUENCY_BOUND_HZ = 0
-        UPPER_FREQUENCY_BOUND_HZ = 10000
         TESTING_FREQUENCIES_HZ = [250,500,750,1000,1500,2000,3000,4000,6000,8000]
         LOWER_LEVEL_BOUND_HL = -10
         UPPER_LEVEL_BOUND_HL = 120
@@ -11,6 +9,7 @@ classdef Audiogram < handle
     properties (Access = private)
         mainFigure
         mainAxes
+        selections
     end
     
     methods
@@ -20,15 +19,11 @@ classdef Audiogram < handle
                 'toolbar', 'none', ...
                 'numbertitle', 'off', ...
                 'units', 'normalized', ...
-                'position', [0.05, 0.05, 0.84, 0.84], ...
+                'position', [0.1, 0.1, 0.8, 0.8], ...
                 'name', 'Audiogram', ...
                 'handlevisibility', 'off', ...
                 'closerequestfcn', @(~, ~)self.onCloseRequest());
-            tickFrequencies = [ ...
-                self.LOWER_FREQUENCY_BOUND_HZ, ...
-                self.TESTING_FREQUENCIES_HZ, ...
-                self.UPPER_FREQUENCY_BOUND_HZ];
-            frequencyNamesCell = cell(1, numel(tickFrequencies));
+            frequencyNamesCell = cell(1, numel(self.TESTING_FREQUENCIES_HZ));
             for i = 1:numel(frequencyNamesCell)
                 frequencyNamesCell{i} = sprintf('%i', tickFrequencies(i));
             end
@@ -46,6 +41,14 @@ classdef Audiogram < handle
                 'yTick', yticks, ...
                 'ylim', [yticks(1), yticks(end)], ...
                 'buttondownfcn', @(~, ~)self.onAxesClick());
+            selections = gobjects(1, numel(self.TESTING_FREQUENCIES_HZ));
+            for i = 1:numel(selections)
+                selections(i) = line(mainAxes, xticks(i + 1), 0, ...
+                    'marker', 'x', ...
+                    'markersize', 15, ...
+                    'color', 'black');
+            end
+            self.selections = selections;
             self.mainFigure = mainFigure;
             self.mainAxes = mainAxes;
         end
@@ -57,6 +60,17 @@ classdef Audiogram < handle
         end
         
         function onAxesClick(self)
+            points = get(self.mainAxes, 'currentpoint');
+            clickX = points(1);
+            clickY = points(3);
+            xticks = 0:1/(numel(self.TESTING_FREQUENCIES_HZ) + 1):1;
+            candidates = xticks(2:end-1);
+            index = self.getNearestIndex(candidates, clickX);
+            set(self.selections(index), 'ydata', clickY);
+        end
+        
+        function index = getNearestIndex(~, array, value)
+            [~, index] = min(abs(array - value));
         end
     end
 end
