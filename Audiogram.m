@@ -1,7 +1,5 @@
 classdef Audiogram < handle
     properties (Constant)
-        TESTING_FREQUENCIES_HZ = [250,500,750,1000,1500,2000,3000,4000,6000,8000]
-        X_TICKS = 1:numel(Audiogram.TESTING_FREQUENCIES_HZ)
         LOWER_LEVEL_BOUND_HL = -10
         UPPER_LEVEL_BOUND_HL = 120
         LEVEL_STEP_SIZE_HL = 10
@@ -12,11 +10,13 @@ classdef Audiogram < handle
         mainAxes
         selections
         entries
+        xTicks
+        frequencies
         mouseHoverText
     end
     
     methods
-        function self = Audiogram()
+        function self = Audiogram(frequencies)
             mainFigure = figure( ...
                 'menubar', 'none', ...
                 'toolbar', 'none', ...
@@ -27,14 +27,15 @@ classdef Audiogram < handle
                 'handlevisibility', 'off', ...
                 'windowbuttonmotionfcn', @(~, ~)self.onMoveMouse(), ...
                 'closerequestfcn', @(~, ~)self.onCloseRequest());
-            frequencyNamesCell = cell(1, numel(self.TESTING_FREQUENCIES_HZ));
+            frequencyNamesCell = cell(1, numel(frequencies));
             for i = 1:numel(frequencyNamesCell)
-                frequencyNamesCell{i} = sprintf('%i', self.TESTING_FREQUENCIES_HZ(i));
+                frequencyNamesCell{i} = sprintf('%i', frequencies(i));
             end
+            xTicks = 1:numel(frequencies);
             scale = 1.1;
             xLimits = [ ...
-                self.X_TICKS(end) * (1 - scale) + self.X_TICKS(1) * (1 + scale), ...
-                self.X_TICKS(end) * (1 + scale) + self.X_TICKS(1) * (1 - scale)] * 0.5;
+                xTicks(end) * (1 - scale) + xTicks(1) * (1 + scale), ...
+                xTicks(end) * (1 + scale) + xTicks(1) * (1 - scale)] * 0.5;
             yTicks = self.LOWER_LEVEL_BOUND_HL:self.LEVEL_STEP_SIZE_HL:self.UPPER_LEVEL_BOUND_HL;
             mainAxes = axes( ...
                 'units', 'normalized', ...
@@ -43,16 +44,16 @@ classdef Audiogram < handle
                 'xgrid', 'on', ...
                 'ygrid', 'on', ...
                 'xticklabel', frequencyNamesCell, ...
-                'xtick', self.X_TICKS, ...
+                'xtick', xTicks, ...
                 'xlim', xLimits, ...
                 'yTick', yTicks, ...
                 'ylim', [yTicks(1), yTicks(end)], ...
                 'buttondownfcn', @(~, ~)self.onAxesClick());
             xlabel(mainAxes, 'frequency (Hz)');
             ylabel(mainAxes, 'threshold (dB HL)');
-            selections = gobjects(1, numel(self.TESTING_FREQUENCIES_HZ));
+            selections = gobjects(1, numel(frequencies));
             for i = 1:numel(selections)
-                selections(i) = line(mainAxes, self.X_TICKS(i), self.UPPER_LEVEL_BOUND_HL, ...
+                selections(i) = line(mainAxes, xTicks(i), self.UPPER_LEVEL_BOUND_HL, ...
                     'marker', 'x', ...
                     'markersize', 15, ...
                     'color', 'red');
@@ -61,12 +62,12 @@ classdef Audiogram < handle
                 'parent', mainAxes, ...
                 'clipping', 'on', ...
                 'pickableparts', 'none');
-            entries = gobjects(1, numel(self.TESTING_FREQUENCIES_HZ));
+            entries = gobjects(1, numel(frequencies));
             axesPosition = get(mainAxes, 'position');
             axesXLimits = get(mainAxes, 'xlim');
             textWidth = 0.04;
             for i = 1:numel(entries)
-                xMid = axesPosition(1) + (self.X_TICKS(i) - axesXLimits(1)) / (axesXLimits(end) - axesXLimits(1)) * axesPosition(3);
+                xMid = axesPosition(1) + (xTicks(i) - axesXLimits(1)) / (axesXLimits(end) - axesXLimits(1)) * axesPosition(3);
                 selectionY = get(selections(i), 'ydata');
                 entries(i) = uicontrol(mainFigure, ...
                     'style', 'edit', ...
@@ -75,6 +76,7 @@ classdef Audiogram < handle
                     'string', num2str(selectionY), ...
                     'callback', @(~, ~)self.onUpdateEntry(i));
             end
+            self.xTicks = xTicks;
             self.entries = entries;
             self.mouseHoverText = mouseHoverText;
             self.selections = selections;
@@ -92,7 +94,7 @@ classdef Audiogram < handle
             points = get(self.mainAxes, 'currentpoint');
             clickX = points(1);
             clickY = points(3);
-            index = self.getNearestIndex(self.X_TICKS, clickX);
+            index = self.getNearestIndex(self.xTicks, clickX);
             evaluated = round(clickY);
             set(self.selections(index), 'ydata', evaluated);
             set(self.entries(index), 'string', num2str(evaluated));
@@ -107,7 +109,7 @@ classdef Audiogram < handle
             mouseX = currentPoint(1);
             mouseY = currentPoint(3);
             xLimit = get(self.mainFigure, 'xlim');
-            if mouseX < self.X_TICKS(2)
+            if mouseX < self.xTicks(2)
                 direction = -1;
             else
                 direction = 1;
