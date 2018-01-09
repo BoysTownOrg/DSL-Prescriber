@@ -10,13 +10,15 @@ classdef Audiogram < handle
         mainAxes
         selections
         entries
-        xTicks
         frequencies
         mouseHoverText
+        model
+        xTickFrequencyMap
     end
     
     methods
         function self = Audiogram(frequencies)
+            model = Model(frequencies);
             mainFigure = figure( ...
                 'menubar', 'none', ...
                 'toolbar', 'none', ...
@@ -27,11 +29,18 @@ classdef Audiogram < handle
                 'handlevisibility', 'off', ...
                 'windowbuttonmotionfcn', @(~, ~)self.onMoveMouse(), ...
                 'closerequestfcn', @(~, ~)self.onCloseRequest());
-            frequencyNamesCell = cell(1, numel(frequencies));
-            for i = 1:numel(frequencyNamesCell)
-                frequencyNamesCell{i} = sprintf('%i', frequencies(i));
-            end
+            theMenu = uimenu(mainFigure, ...
+                'label', 'Analyze');
+            uimenu(theMenu, ...
+                'label', 'Compute thresholds (SPL)', ...
+                'callback', @(~, ~)self.computeThresholds());
             xTicks = 1:numel(frequencies);
+            xTickFrequencyMap = containers.Map(xTicks, frequencies);
+            frequencyNamesCell = cell(1, numel(xTicks));
+            for i = 1:numel(xTicks)
+                frequency = xTickFrequencyMap(xTicks(i));
+                frequencyNamesCell{i} = sprintf('%i', frequency);
+            end
             scale = 1.1;
             xLimits = [ ...
                 xTicks(end) * (1 - scale) + xTicks(1) * (1 + scale), ...
@@ -76,12 +85,13 @@ classdef Audiogram < handle
                     'string', num2str(selectionY), ...
                     'callback', @(~, ~)self.onUpdateEntry(i));
             end
-            self.xTicks = xTicks;
             self.entries = entries;
             self.mouseHoverText = mouseHoverText;
             self.selections = selections;
             self.mainFigure = mainFigure;
             self.mainAxes = mainAxes;
+            self.xTickFrequencyMap = xTickFrequencyMap;
+            self.model = model;
         end
     end
     
@@ -94,10 +104,13 @@ classdef Audiogram < handle
             points = get(self.mainAxes, 'currentpoint');
             clickX = points(1);
             clickY = points(3);
-            index = self.getNearestIndex(self.xTicks, clickX);
-            evaluated = round(clickY);
-            set(self.selections(index), 'ydata', evaluated);
-            set(self.entries(index), 'string', num2str(evaluated));
+            xTicks = cell2mat(self.xTickFrequencyMap.keys());
+            xTick = self.getNearestIndex(xTicks, clickX);
+            frequency = self.xTickFrequencyMap(xTick);
+            evaluatedLevel = round(clickY);
+            self.model.setLevel(frequency, evaluatedLevel);
+            set(self.selections(xTick), 'ydata', evaluatedLevel);
+            set(self.entries(xTick), 'string', num2str(evaluatedLevel));
         end
         
         function index = getNearestIndex(~, array, value)
@@ -108,8 +121,9 @@ classdef Audiogram < handle
             currentPoint = get(self.mainAxes, 'currentpoint');
             mouseX = currentPoint(1);
             mouseY = currentPoint(3);
-            xLimit = get(self.mainFigure, 'xlim');
-            if mouseX < self.xTicks(2)
+            xLimit = get(self.mainAxes, 'xlim');
+            xTicks = get(self.mainAxes, 'xtick');
+            if mouseX < xTicks(2)
                 direction = -1;
             else
                 direction = 1;
@@ -124,6 +138,21 @@ classdef Audiogram < handle
         function onUpdateEntry(self, n)
             enteredValue = get(self.entries(n), 'string');
             set(self.selections(n), 'ydata', str2double(enteredValue));
+        end
+        
+        function computeThresholds(self)
+            newFigure = figure( ...
+                'menubar', 'none', ...
+                'toolbar', 'none', ...
+                'numbertitle', 'off', ...
+                'units', 'normalized', ...
+                'position', [0.3, 0.4, 0.4, 0.2], ...
+                'name', 'Thresholds (SPL)', ...
+                'handlevisibility', 'off');
+            uitable(newFigure, ...
+                'units', 'normalized', ...
+                'position', [0.1, 0.1, 0.8, 0.8], ...
+                'columnName', {'Frequency (Hz)', 'Real Ear SPL'});
         end
     end
 end
