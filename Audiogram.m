@@ -1,8 +1,11 @@
 classdef Audiogram < handle
-    properties (Constant)
+    properties (Constant, Access = private)
         LOWER_LEVEL_BOUND_HL = -10
         UPPER_LEVEL_BOUND_HL = 120
         LEVEL_STEP_SIZE_HL = 10
+        magicalTDHCorrections = containers.Map( ...
+            [250, 500, 750, 1000, 1500, 2000, 3000, 4000, 6000, 8000], ...
+            [8.4, 9.3, 14.5, 13.7, 14.4, 19.2, 21.1, 16.4, 16.9, 22.4]);
     end
     
     properties (Access = private)
@@ -10,15 +13,17 @@ classdef Audiogram < handle
         mainAxes
         selections
         entries
-        frequencies
+        frequenciesHz
         xTicks
         mouseHoverText
         model
     end
     
     methods
-        function self = Audiogram(frequencies)
-            model = Model(frequencies, @(level, frequency)self.onUpdateModel(level, frequency));
+        function self = Audiogram(frequenciesHz)
+            model = Model( ...
+                frequenciesHz, ...
+                @(level, frequency)self.onUpdateModel(level, frequency));
             mainFigure = figure( ...
                 'menubar', 'none', ...
                 'toolbar', 'none', ...
@@ -34,10 +39,10 @@ classdef Audiogram < handle
             uimenu(theMenu, ...
                 'label', 'Compute thresholds (SPL)', ...
                 'callback', @(~, ~)self.computeThresholds());
-            xTicks = 1:numel(frequencies);
+            xTicks = 1:numel(frequenciesHz);
             frequencyNamesCell = cell(1, numel(xTicks));
             for i = 1:numel(xTicks)
-                frequency = frequencies(i);
+                frequency = frequenciesHz(i);
                 frequencyNamesCell{i} = sprintf('%i', frequency);
             end
             scale = 1.1;
@@ -59,9 +64,9 @@ classdef Audiogram < handle
                 'buttondownfcn', @(~, ~)self.onAxesClick());
             xlabel(mainAxes, 'frequency (Hz)');
             ylabel(mainAxes, 'threshold (dB HL)');
-            selections = gobjects(1, numel(frequencies));
-            for i = 1:numel(frequencies)
-                frequency = frequencies(i);
+            selections = gobjects(1, numel(frequenciesHz));
+            for i = 1:numel(frequenciesHz)
+                frequency = frequenciesHz(i);
                 level = model.getLevel(frequency);
                 selections(i) = line(mainAxes, xTicks(i), level, ...
                     'marker', 'x', ...
@@ -72,7 +77,7 @@ classdef Audiogram < handle
                 'parent', mainAxes, ...
                 'clipping', 'on', ...
                 'pickableparts', 'none');
-            entries = gobjects(1, numel(frequencies));
+            entries = gobjects(1, numel(frequenciesHz));
             axesPosition = get(mainAxes, 'position');
             axesXLimits = get(mainAxes, 'xlim');
             textWidth = 0.04;
@@ -84,7 +89,7 @@ classdef Audiogram < handle
                     'units', 'normalized', ...
                     'position', [xMid - textWidth / 2, 0.08, textWidth, 0.04], ...
                     'string', num2str(selectionY), ...
-                    'callback', @(~, ~)self.onUpdateEntry(frequencies(i)));
+                    'callback', @(~, ~)self.onUpdateEntry(frequenciesHz(i)));
             end
             self.entries = entries;
             self.mouseHoverText = mouseHoverText;
@@ -93,7 +98,7 @@ classdef Audiogram < handle
             self.mainAxes = mainAxes;
             self.model = model;
             self.xTicks = xTicks;
-            self.frequencies = frequencies;
+            self.frequenciesHz = frequenciesHz;
         end
     end
     
@@ -103,9 +108,9 @@ classdef Audiogram < handle
         end
         
         function onUpdateModel(self, frequency, level)
-            selection = self.selections(self.frequencies == frequency);
+            selection = self.selections(self.frequenciesHz == frequency);
             set(selection, 'ydata', level);
-            entry = self.entries(self.frequencies == frequency);
+            entry = self.entries(self.frequenciesHz == frequency);
             set(entry, 'string', num2str(level));
         end
         
@@ -114,7 +119,7 @@ classdef Audiogram < handle
             clickX = points(1);
             clickY = points(3);
             index = self.getNearestIndex(self.xTicks, clickX);
-            frequency = self.frequencies(index);
+            frequency = self.frequenciesHz(index);
             evaluatedLevel = round(clickY);
             self.model.setLevel(frequency, evaluatedLevel);
         end
@@ -124,7 +129,7 @@ classdef Audiogram < handle
         end
         
         function onUpdateEntry(self, frequency)
-            entry = self.entries(self.frequencies == frequency);
+            entry = self.entries(self.frequenciesHz == frequency);
             enteredLevel = str2double(get(entry, 'string'));
             self.model.setLevel(frequency, enteredLevel);
         end
@@ -134,9 +139,9 @@ classdef Audiogram < handle
             mouseX = currentPoint(1);
             mouseY = currentPoint(3);
             if mouseX < self.xTicks(2)
-                direction = -1;
-            else
                 direction = 1;
+            else
+                direction = -1;
             end
             scale = 0.07;
             offsetScale = direction * scale;
@@ -152,13 +157,27 @@ classdef Audiogram < handle
                 'toolbar', 'none', ...
                 'numbertitle', 'off', ...
                 'units', 'normalized', ...
-                'position', [0.3, 0.4, 0.4, 0.2], ...
+                'position', [0.4, 0.3, 0.2, 0.4], ...
                 'name', 'Thresholds (SPL)', ...
                 'handlevisibility', 'off');
+            COLUMNS = 2;
+            tableData = nan(numel(self.frequenciesHz), COLUMNS);
+            FREQUENCY = 1;
+            LEVEL = 2;
+            for i = 1:numel(self.frequenciesHz)
+                frequency = self.frequenciesHz(i);
+                tableData(i, FREQUENCY) = frequency;
+                level = self.model.getLevel(frequency);
+                tableData(i, LEVEL) = level + self.magicalTDHCorrections(frequency);
+            end
+            columnHeadings = cell(1, COLUMNS);
+            columnHeadings{FREQUENCY} = 'Frequency (Hz)';
+            columnHeadings{LEVEL} = 'Real Ear SPL';
             uitable(newFigure, ...
                 'units', 'normalized', ...
                 'position', [0.1, 0.1, 0.8, 0.8], ...
-                'columnName', {'Frequency (Hz)', 'Real Ear SPL'});
+                'columnName', columnHeadings, ...
+                'data', tableData);
         end
     end
 end
