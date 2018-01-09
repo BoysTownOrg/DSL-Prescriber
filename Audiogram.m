@@ -11,14 +11,14 @@ classdef Audiogram < handle
         selections
         entries
         frequencies
+        xTicks
         mouseHoverText
         model
-        xTickFrequencyMap
     end
     
     methods
         function self = Audiogram(frequencies)
-            model = Model(frequencies);
+            model = Model(frequencies, @(level, frequency)self.onUpdateModel(level, frequency));
             mainFigure = figure( ...
                 'menubar', 'none', ...
                 'toolbar', 'none', ...
@@ -35,10 +35,9 @@ classdef Audiogram < handle
                 'label', 'Compute thresholds (SPL)', ...
                 'callback', @(~, ~)self.computeThresholds());
             xTicks = 1:numel(frequencies);
-            xTickFrequencyMap = containers.Map(xTicks, frequencies);
             frequencyNamesCell = cell(1, numel(xTicks));
             for i = 1:numel(xTicks)
-                frequency = xTickFrequencyMap(xTicks(i));
+                frequency = frequencies(i);
                 frequencyNamesCell{i} = sprintf('%i', frequency);
             end
             scale = 1.1;
@@ -61,8 +60,10 @@ classdef Audiogram < handle
             xlabel(mainAxes, 'frequency (Hz)');
             ylabel(mainAxes, 'threshold (dB HL)');
             selections = gobjects(1, numel(frequencies));
-            for i = 1:numel(selections)
-                selections(i) = line(mainAxes, xTicks(i), self.UPPER_LEVEL_BOUND_HL, ...
+            for i = 1:numel(frequencies)
+                frequency = frequencies(i);
+                level = model.getLevel(frequency);
+                selections(i) = line(mainAxes, xTicks(i), level, ...
                     'marker', 'x', ...
                     'markersize', 15, ...
                     'color', 'red');
@@ -83,15 +84,16 @@ classdef Audiogram < handle
                     'units', 'normalized', ...
                     'position', [xMid - textWidth / 2, 0.08, textWidth, 0.04], ...
                     'string', num2str(selectionY), ...
-                    'callback', @(~, ~)self.onUpdateEntry(i));
+                    'callback', @(~, ~)self.onUpdateEntry(frequencies(i)));
             end
             self.entries = entries;
             self.mouseHoverText = mouseHoverText;
             self.selections = selections;
             self.mainFigure = mainFigure;
             self.mainAxes = mainAxes;
-            self.xTickFrequencyMap = xTickFrequencyMap;
             self.model = model;
+            self.xTicks = xTicks;
+            self.frequencies = frequencies;
         end
     end
     
@@ -100,44 +102,48 @@ classdef Audiogram < handle
             delete(self.mainFigure);
         end
         
+        function onUpdateModel(self, frequency, level)
+            selection = self.selections(self.frequencies == frequency);
+            set(selection, 'ydata', level);
+            entry = self.entries(self.frequencies == frequency);
+            set(entry, 'string', num2str(level));
+        end
+        
         function onAxesClick(self)
             points = get(self.mainAxes, 'currentpoint');
             clickX = points(1);
             clickY = points(3);
-            xTicks = cell2mat(self.xTickFrequencyMap.keys());
-            xTick = self.getNearestIndex(xTicks, clickX);
-            frequency = self.xTickFrequencyMap(xTick);
+            index = self.getNearestIndex(self.xTicks, clickX);
+            frequency = self.frequencies(index);
             evaluatedLevel = round(clickY);
             self.model.setLevel(frequency, evaluatedLevel);
-            set(self.selections(xTick), 'ydata', evaluatedLevel);
-            set(self.entries(xTick), 'string', num2str(evaluatedLevel));
         end
         
         function index = getNearestIndex(~, array, value)
             [~, index] = min(abs(array - value));
         end
         
+        function onUpdateEntry(self, frequency)
+            entry = self.entries(self.frequencies == frequency);
+            enteredLevel = str2double(get(entry, 'string'));
+            self.model.setLevel(frequency, enteredLevel);
+        end
+        
         function onMoveMouse(self)
             currentPoint = get(self.mainAxes, 'currentpoint');
             mouseX = currentPoint(1);
             mouseY = currentPoint(3);
-            xLimit = get(self.mainAxes, 'xlim');
-            xTicks = get(self.mainAxes, 'xtick');
-            if mouseX < xTicks(2)
+            if mouseX < self.xTicks(2)
                 direction = -1;
             else
                 direction = 1;
             end
             scale = 0.07;
             offsetScale = direction * scale;
+            xLimit = get(self.mainAxes, 'xlim');
             set(self.mouseHoverText, ...
                 'position', [mouseX + offsetScale * (xLimit(end) - xLimit(1)), mouseY, 0], ...
                 'string', sprintf('%d dB HL', round(mouseY)));
-        end
-        
-        function onUpdateEntry(self, n)
-            enteredValue = get(self.entries(n), 'string');
-            set(self.selections(n), 'ydata', str2double(enteredValue));
         end
         
         function computeThresholds(self)
