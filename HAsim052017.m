@@ -1196,28 +1196,22 @@ g=10.^(gdB/20);
 comp=x.*g;
 
 function DSL = WDRC_Tune(att,rel,Nchannel,lid,ear,DSLdir,audiodir,rolloff)
-[cent_freq,thirdOCTthr] = GetThresh(3,ear,audiodir,sprintf('%s Audiogram',lid));
-SENNcorrection = [1.2, 1.2, 2.29, 3.72, 5.4, 5.04, 4.86, 5.5, 6.75, 8.94, 12.7, 12.95, 12.6, 9.2, 5.95, 4.26, 13.1]+3;
 if ear == 0
     [~,ThreshSPL,vTK,vTKgain,TargetBOLT,vCR,TargetAvg,~,~] = readDSLfile(strcat(DSLdir,'\',sprintf('%s right.csv',lid)));
 else
     [~,ThreshSPL,vTK,vTKgain,TargetBOLT,vCR,TargetAvg,~,~] = readDSLfile(strcat(DSLdir,'\',sprintf('%s left.csv',lid)));
 end
 [oct_freq,OCTthr] = GetThresh(0,ear,audiodir,sprintf('%s Audiogram',lid));
-DSLoctThr = [ThreshSPL(2),ThreshSPL(5),ThreshSPL(8),ThreshSPL(11),ThreshSPL(14)];
-err = 0;
-for j = 1:5
+DSLoctThr = ThreshSPL(ThreshSPL ~= 0);
+for j = 1:numel(DSLoctThr)
     if OCTthr(j) ~= DSLoctThr(j)
         warndlg(sprintf('You entered %s in the DSL program instead of %s at %s Hz',num2str(DSLoctThr(j)),num2str(OCTthr(j)),num2str(oct_freq(j))),'ERROR');
-        err = 1;
+        DSL = -99;
+        return
     end
 end
-if err == 1
-    DSL = -99;
-    return
-end
 minchannel = 1;
-for j = 1:16
+for j = 1:numel(vTK)-1
     if vTK(j)~=vTK(j+1), minchannel = minchannel+1;end
 end
 
@@ -1225,6 +1219,7 @@ if Nchannel < minchannel
     warndlg(sprintf('The minimum # of channels for the selected file must be at least %s',num2str(minchannel)),'ERROR');
     return
 end
+[cent_freq,thirdOCTthr] = GetThresh(3,ear,audiodir,sprintf('%s Audiogram',lid));
 TargetAvg(17) = TargetAvg(16)-thirdOCTthr(16)+thirdOCTthr(17);
 if TargetAvg(17)-TargetAvg(16) > 10
     TargetAvg(17) = TargetAvg(16) + 10;
@@ -1238,6 +1233,7 @@ TKgain = zeros(1, Nchannel);
 adjBOLT = zeros(1, Nchannel);
 vTargetAvg = zeros(1, Nchannel);
 vSENNcorr = zeros(1, Nchannel);
+SENNcorrection = [1.2, 1.2, 2.29, 3.72, 5.4, 5.04, 4.86, 5.5, 6.75, 8.94, 12.7, 12.95, 12.6, 9.2, 5.95, 4.26, 13.1]+3;
 for n = 1:Nchannel
     TK(n) = mean(vTK(Select_channel(n)+1:Select_channel(n+1)));
     CR(n) = mean(vCR(Select_channel(n)+1:Select_channel(n+1)));
