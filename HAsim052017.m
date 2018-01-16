@@ -1214,15 +1214,14 @@ minchannel = 1;
 for j = 1:numel(vTK)-1
     if vTK(j)~=vTK(j+1), minchannel = minchannel+1;end
 end
-
 if Nchannel < minchannel
     warndlg(sprintf('The minimum # of channels for the selected file must be at least %s',num2str(minchannel)),'ERROR');
     return
 end
 [cent_freq,thirdOCTthr] = GetThresh(3,ear,audiodir,sprintf('%s Audiogram',lid));
-TargetAvg(17) = TargetAvg(16)-thirdOCTthr(16)+thirdOCTthr(17);
-if TargetAvg(17)-TargetAvg(16) > 10
-    TargetAvg(17) = TargetAvg(16) + 10;
+TargetAvg(end) = TargetAvg(end-1)-thirdOCTthr(end-1)+thirdOCTthr(end);
+if TargetAvg(end)-TargetAvg(end-1) > 10
+    TargetAvg(end) = TargetAvg(end-1) + 10;
 end
 [Cross_freq, Select_channel] = HA_channelselect(cent_freq, Nchannel);
 Select_channel = [0,Select_channel];
