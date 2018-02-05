@@ -36,6 +36,9 @@ classdef Audiogram < handle
             uimenu(theMenu, ...
                 'label', 'Compute thresholds (SPL)', ...
                 'callback', @(~, ~)self.computeThresholds());
+            uimenu(theMenu, ...
+                'label', 'Generate prescription', ...
+                'callback', @(~, ~)self.tryGeneratingPrescription());
             xTicks = 1:numel(frequenciesHz);
             frequencyNamesCell = cell(1, numel(xTicks));
             for i = 1:numel(xTicks)
@@ -175,6 +178,36 @@ classdef Audiogram < handle
                 'position', [0.1, 0.1, 0.8, 0.8], ...
                 'columnName', columnHeadings, ...
                 'data', tableData);
+        end
+        
+        function tryGeneratingPrescription(self)
+            try
+                self.generatePrescription();
+            catch ME
+                errordlg(ME.message, 'error');
+            end
+        end
+        
+        function generatePrescription(self)
+            [fileName, pathName] = uigetfile('*.csv', 'Open DSL output file');
+            if pathName
+                dslFile = [pathName, fileName];
+                self.generateDSL(dslFile);
+            end
+        end
+        
+        function generateDSL(self, dslFile)
+            attackMilliseconds = 5;
+            releaseMilliseconds = 50;
+            channelCount = 8;
+            thresholds = self.model.getThresholds();
+            tuner = WDRCTuner( ...
+                attackMilliseconds, ...
+                releaseMilliseconds, ...
+                channelCount, ...
+                dslFile, ...
+                thresholds);
+            DSL = tuner.generateDSL()
         end
     end
 end
