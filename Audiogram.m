@@ -3,9 +3,6 @@ classdef Audiogram < handle
         LOWER_LEVEL_BOUND_HL = -10
         UPPER_LEVEL_BOUND_HL = 120
         LEVEL_STEP_SIZE_HL = 10
-        magicalTDHCorrections = containers.Map( ...
-            [250, 500, 750, 1000, 1500, 2000, 3000, 4000, 6000, 8000], ...
-            [8.4, 9.3, 14.5, 13.7, 14.4, 19.2, 21.1, 16.4, 16.9, 22.4]);
     end
     
     properties (Access = private)
@@ -168,7 +165,7 @@ classdef Audiogram < handle
                 frequency = self.frequenciesHz(i);
                 tableData(i, FREQUENCY) = frequency;
                 level = self.model.getLevel(frequency);
-                tableData(i, LEVEL) = level + self.magicalTDHCorrections(frequency);
+                tableData(i, LEVEL) = level + TDHCorrections.levels(frequency);
             end
             columnHeadings = cell(1, COLUMNS);
             columnHeadings{FREQUENCY} = 'Frequency (Hz)';

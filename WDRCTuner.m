@@ -1,8 +1,5 @@
 classdef WDRCTuner < handle
     properties (Access = private, Constant)
-        TDHCorrections = containers.Map( ...
-            [250, 500, 750, 1000, 1500, 2000, 3000, 4000, 6000, 8000], ...
-            [8.4, 9.3, 14.5, 13.7, 14.4, 19.2, 21.1, 16.4, 16.9, 22.4])
         centerFrequencies = [200 250 315 400 500 630 800 1000 1250 1600 2000 2500 3150 4000 5000 6300 8000]
         octaveFrequencies = [250, 500, 1000, 2000, 4000]
         SENNcorrection = [1.2, 1.2, 2.29, 3.72, 5.4, 5.04, 4.86, 5.5, 6.75, 8.94, 12.7, 12.95, 12.6, 9.2, 5.95, 4.26, 13.1]+3
@@ -89,7 +86,7 @@ classdef WDRCTuner < handle
         function verifyDSLThresholdEntries(self, thresholds, DSLRawThresholds)
             for i = 1:numel(self.octaveFrequencies)
                 frequency = self.octaveFrequencies(i);
-                correctedThreshold = round(thresholds(frequency) + self.TDHCorrections(frequency), 1);
+                correctedThreshold = round(thresholds(frequency) + TDHCorrections.levels(frequency), 1);
                 assert(correctedThreshold == DSLRawThresholds(frequency), ...
                     sprintf( ...
                     'You entered %d in the DSL program instead of %d at %d Hz', ...
@@ -118,7 +115,7 @@ classdef WDRCTuner < handle
             correctedThresholds = zeros(1, numel(frequencies));
             for i = 1:numel(frequencies)
                 frequency = frequencies(i);
-                correctedThresholds(i) = thresholds(frequency) + self.TDHCorrections(frequency);
+                correctedThresholds(i) = thresholds(frequency) + TDHCorrections.levels(frequency);
             end
             thirdOctaveThresholds = containers.Map(self.centerFrequencies, ...
                 interp1(frequencies, correctedThresholds, self.centerFrequencies));
