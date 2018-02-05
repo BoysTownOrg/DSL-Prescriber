@@ -192,11 +192,12 @@ classdef Audiogram < handle
             [fileName, pathName] = uigetfile('*.csv', 'Open DSL output file');
             if pathName
                 dslFile = [pathName, fileName];
-                self.generateDSL(dslFile);
+                DSL = self.generateDSL(dslFile);
+                self.saveDSL(DSL);
             end
         end
         
-        function generateDSL(self, dslFile)
+        function DSL = generateDSL(self, dslFile)
             attackMilliseconds = 5;
             releaseMilliseconds = 50;
             channelCount = 8;
@@ -207,7 +208,17 @@ classdef Audiogram < handle
                 channelCount, ...
                 dslFile, ...
                 thresholds);
-            DSL = tuner.generateDSL()
+            DSL = tuner.generateDSL();
+        end
+        
+        function saveDSL(self, DSL)
+            [fileName, pathName] = uiputfile('*.json', 'Save prescription');
+            file = [pathName, fileName];
+            fid = fopen(file, 'w');
+            assert(fid ~= -1, 'Unable to open ', file, ' for writing.');
+            result = jsonencode(DSL);
+            fprintf(fid, '%s', result);
+            fclose(fid);
         end
     end
 end
