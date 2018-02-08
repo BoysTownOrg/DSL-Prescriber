@@ -27,7 +27,8 @@ classdef Audiogram < handle
             selections = self.initSelections(mainAxes, xTicks);
             mouseHoverText = self.initMouseHoverText(mainAxes);
             xMidPoints = self.getXMidPoints(mainAxes, xTicks);
-            entries = self.initEntries(mainFigure, xMidPoints, frequenciesHz);
+            entries = self.initEntries(mainFigure, xMidPoints);
+            self.setEntryCallbacks(entries, frequenciesHz)
             model = Model( ...
                 frequenciesHz, ...
                 @(level, frequency)self.onUpdateModel(level, frequency));
@@ -39,8 +40,7 @@ classdef Audiogram < handle
             self.model = model;
             self.xTicks = xTicks;
             self.frequenciesHz = frequenciesHz;
-            t = timer('timerfcn', @(~, ~)self.initializeModelView());
-            start(t)
+            self.initializeModelView();
         end
     end
     
@@ -122,15 +122,21 @@ classdef Audiogram < handle
             midPoints = axesPosition(1) + (xTicks - axesXLimits(1)) / xLimitSpan * axesPosition(3);
         end
         
-        function entries = initEntries(self, parent, xMidPoints, frequencies)
-            frequencyCount = numel(frequencies);
-            entries = gobjects(1, frequencyCount);
+        function entries = initEntries(self, parent, xMidPoints)
+            entryCount = numel(xMidPoints);
+            entries = gobjects(1, entryCount);
             textWidth = 0.04;
-            for i = 1:frequencyCount
+            for i = 1:entryCount
                 entries(i) = uicontrol(parent, ...
                     'style', 'edit', ...
                     'units', 'normalized', ...
-                    'position', [xMidPoints(i) - textWidth / 2, 0.08, textWidth, 0.04], ...
+                    'position', [xMidPoints(i) - textWidth / 2, 0.08, textWidth, 0.04]);
+            end
+        end
+        
+        function setEntryCallbacks(self, entries, frequencies)
+            for i = 1:numel(entries)
+                set(entries(i), ...
                     'callback', @(~, ~)self.onUpdateEntry(frequencies(i)));
             end
         end
