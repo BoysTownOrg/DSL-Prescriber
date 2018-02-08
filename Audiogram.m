@@ -24,36 +24,13 @@ classdef Audiogram < handle
             xTicks = 1:numel(frequencyNames);
             mainAxes = self.initAxes(mainFigure, xTicks);
             set(mainAxes, 'xticklabel', frequencyNames);
-            selections = gobjects(1, numel(frequenciesHz));
+            selections = self.initSelections(mainAxes, xTicks);
+            mouseHoverText = self.initMouseHoverText(mainAxes);
+            xMidPoints = self.getXMidPoints(mainAxes, xTicks);
+            entries = self.initEntries(mainFigure, xMidPoints, frequenciesHz);
             model = Model( ...
                 frequenciesHz, ...
                 @(level, frequency)self.onUpdateModel(level, frequency));
-            for i = 1:numel(frequenciesHz)
-                frequency = frequenciesHz(i);
-                level = model.getLevel(frequency);
-                selections(i) = line(mainAxes, xTicks(i), level, ...
-                    'marker', 'x', ...
-                    'markersize', 15, ...
-                    'color', 'red');
-            end
-            mouseHoverText = text(0, 0, '', ...
-                'parent', mainAxes, ...
-                'clipping', 'on', ...
-                'pickableparts', 'none');
-            entries = gobjects(1, numel(frequenciesHz));
-            axesPosition = get(mainAxes, 'position');
-            axesXLimits = get(mainAxes, 'xlim');
-            textWidth = 0.04;
-            for i = 1:numel(entries)
-                xMid = axesPosition(1) + (xTicks(i) - axesXLimits(1)) / (axesXLimits(end) - axesXLimits(1)) * axesPosition(3);
-                selectionY = get(selections(i), 'ydata');
-                entries(i) = uicontrol(mainFigure, ...
-                    'style', 'edit', ...
-                    'units', 'normalized', ...
-                    'position', [xMid - textWidth / 2, 0.08, textWidth, 0.04], ...
-                    'string', num2str(selectionY), ...
-                    'callback', @(~, ~)self.onUpdateEntry(frequenciesHz(i)));
-            end
             self.entries = entries;
             self.mouseHoverText = mouseHoverText;
             self.selections = selections;
@@ -62,6 +39,8 @@ classdef Audiogram < handle
             self.model = model;
             self.xTicks = xTicks;
             self.frequenciesHz = frequenciesHz;
+            t = timer('timerfcn', @(~, ~)self.initializeModelView());
+            start(t)
         end
     end
     
@@ -116,6 +95,51 @@ classdef Audiogram < handle
                 'yTick', yTicks, ...
                 'ylim', [yTicks(1), yTicks(end)], ...
                 'buttondownfcn', @(~, ~)self.onAxesClick());
+        end
+        
+        function selections = initSelections(self, parent, xTicks)
+            selectionsCount = numel(xTicks);
+            selections = gobjects(1, selectionsCount);
+            for i = 1:selectionsCount
+                selections(i) = line(parent, xTicks(i), nan, ...
+                    'marker', 'x', ...
+                    'markersize', 15, ...
+                    'color', 'red');
+            end
+        end
+        
+        function mouseHoverText = initMouseHoverText(self, parent)
+            mouseHoverText = text(0, 0, '', ...
+                'parent', parent, ...
+                'clipping', 'on', ...
+                'pickableparts', 'none');
+        end
+        
+        function midPoints = getXMidPoints(self, mainAxes, xTicks)
+            axesPosition = get(mainAxes, 'position');
+            axesXLimits = get(mainAxes, 'xlim');
+            xLimitSpan = axesXLimits(end) - axesXLimits(1);
+            midPoints = axesPosition(1) + (xTicks - axesXLimits(1)) / xLimitSpan * axesPosition(3);
+        end
+        
+        function entries = initEntries(self, parent, xMidPoints, frequencies)
+            frequencyCount = numel(frequencies);
+            entries = gobjects(1, frequencyCount);
+            textWidth = 0.04;
+            for i = 1:frequencyCount
+                entries(i) = uicontrol(parent, ...
+                    'style', 'edit', ...
+                    'units', 'normalized', ...
+                    'position', [xMidPoints(i) - textWidth / 2, 0.08, textWidth, 0.04], ...
+                    'callback', @(~, ~)self.onUpdateEntry(frequencies(i)));
+            end
+        end
+        
+        function initializeModelView(self)
+            for i = 1:numel(self.frequenciesHz)
+                frequency = self.frequenciesHz(i);
+                self.model.setLevel(frequency, nan);
+            end
         end
         
         function onCloseRequest(self)
