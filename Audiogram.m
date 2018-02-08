@@ -153,10 +153,11 @@ classdef Audiogram < handle
         end
         
         function onUpdateModel(self, frequency, level)
-            selection = self.selections(self.frequenciesHz == frequency);
+            index = self.frequenciesHz == frequency;
+            selection = self.selections(index);
             set(selection, 'ydata', level);
-            entry = self.entries(self.frequenciesHz == frequency);
-            set(entry, 'string', num2str(level));
+            entry = self.entries(index);
+            set(entry, 'string', sprintf('%d', level));
         end
         
         function onAxesClick(self)
@@ -165,7 +166,7 @@ classdef Audiogram < handle
             clickY = points(3);
             index = self.getNearestIndex(self.xTicks, clickX);
             frequency = self.frequenciesHz(index);
-            evaluatedLevel = round(clickY);
+            evaluatedLevel = self.getLevelFromMouseY(clickY);
             self.model.setLevel(frequency, evaluatedLevel);
         end
         
@@ -193,7 +194,11 @@ classdef Audiogram < handle
             xLimit = get(self.mainAxes, 'xlim');
             set(self.mouseHoverText, ...
                 'position', [mouseX + offsetScale * (xLimit(end) - xLimit(1)), mouseY, 0], ...
-                'string', sprintf('%d dB HL', round(mouseY)));
+                'string', sprintf('%d dB HL', self.getLevelFromMouseY(mouseY)));
+        end
+        
+        function level = getLevelFromMouseY(self, mouseY)
+            level = round(mouseY);
         end
         
         function computeThresholds(self)
