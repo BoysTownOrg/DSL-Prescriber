@@ -30,7 +30,7 @@ classdef Audiogram < handle
             xMidPoints = self.getXMidPoints(mainAxes, xTicks);
             entries = self.initEntries(mainFigure, xMidPoints);
             self.setEntryCallbacks(entries, frequenciesHz)
-            model = Model( ...
+            model = DSLPrescriber.Model( ...
                 frequenciesHz, ...
                 @(level, frequency)self.onUpdateModel(level, frequency));
             self.entries = entries;
@@ -219,7 +219,7 @@ classdef Audiogram < handle
                 frequency = self.frequenciesHz(i);
                 tableData(i, FREQUENCY) = frequency;
                 level = self.model.getLevel(frequency);
-                tableData(i, LEVEL) = level + TDHCorrections.levels(frequency);
+                tableData(i, LEVEL) = level + DSLPrescriber.TDHCorrections.levels(frequency);
             end
             columnHeadings = cell(1, COLUMNS);
             columnHeadings{FREQUENCY} = 'Frequency (Hz)';
@@ -254,7 +254,7 @@ classdef Audiogram < handle
         end
         
         function DSL = generateDSL(self, dslFile)
-            protocol = PrescriptionProtocol();
+            protocol = DSLPrescriber.PrescriptionProtocol();
             if protocol.userCancels()
                 throw(MException(self.CANCEL_EXCEPTION_ID, ''));
             end
@@ -262,7 +262,7 @@ classdef Audiogram < handle
             releaseMilliseconds = protocol.getReleaseMilliseconds();
             channelCount = 8;
             thresholds = self.model.getThresholds();
-            tuner = WDRCTuner( ...
+            tuner = DSLPrescriber.WDRCTuner( ...
                 attackMilliseconds, ...
                 releaseMilliseconds, ...
                 channelCount, ...
