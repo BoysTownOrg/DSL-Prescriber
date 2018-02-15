@@ -31,7 +31,8 @@ classdef PrescriptionProtocol < handle
                 'numbertitle', 'off', ...
                 'units', 'normalized', ...
                 'position', [0.4, 0.4, 0.2, 0.2], ...
-                
+                'windowstyle', 'modal');
+            
         end
     end
 end
