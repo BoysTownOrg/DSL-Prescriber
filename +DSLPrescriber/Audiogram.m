@@ -251,6 +251,7 @@ classdef Audiogram < handle
             dslFile = [pathName, fileName];
             DSL = self.generateDSL(dslFile);
             self.saveDSL(DSL);
+            msgbox('Successfully saved prescription', 'Success', 'modal');
         end
         
         function DSL = generateDSL(self, dslFile)
