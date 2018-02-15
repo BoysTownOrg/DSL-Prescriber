@@ -248,8 +248,9 @@ classdef Audiogram < handle
         end
         
         function DSL = generateDSL(self, dslFile)
-            attackMilliseconds = 5;
-            releaseMilliseconds = 50;
+            protocol = PrescriptionProtocol();
+            attackMilliseconds = protocol.getAttackMilliseconds();
+            releaseMilliseconds = protocol.getReleaseMilliseconds();
             channelCount = 8;
             thresholds = self.model.getThresholds();
             tuner = WDRCTuner( ...

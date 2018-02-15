@@ -1,7 +1,10 @@
 classdef PrescriptionProtocol < handle
     properties (Access = private)
+        theFigure
         attackMilliseconds
+        attackMillisecondsEntry
         releaseMilliseconds
+        releaseMillisecondsEntry
         selectionComplete
     end
     
@@ -11,48 +14,56 @@ classdef PrescriptionProtocol < handle
         end
         
         function attackMilliseconds = getAttackMilliseconds(self)
-            if ~self.selectionComplete
-                self.selectionComplete = true;
-            end
+            self.waitForSelectionsIfNeeded();
             attackMilliseconds = self.attackMilliseconds;
         end
         
         function releaseMilliseconds = getReleaseMilliseconds(self)
+            self.waitForSelectionsIfNeeded();
+            releaseMilliseconds = self.releaseMilliseconds;
+        end
+    end
+    
+    methods (Access = private)
+        function waitForSelectionsIfNeeded(self)
             if ~self.selectionComplete
+                self.waitForSelections();
                 self.selectionComplete = true;
             end
-            releaseMilliseconds = self.releaseMilliseconds;
         end
         
         function waitForSelections(self)
-            theFigure = figure( ...
+            self.theFigure = figure( ...
                 'menubar', 'none', ...
                 'toolbar', 'none', ...
                 'numbertitle', 'off', ...
                 'units', 'normalized', ...
                 'position', [0.4, 0.4, 0.2, 0.2], ...
                 'windowstyle', 'modal');
-            attackMillisecondsEntry = LabeledEntry( ...
-                'parent', theFigure, ...
+            self.attackMillisecondsEntry = LabeledEntry( ...
+                'parent', self.theFigure, ...
                 'units', 'normalized', ...
                 'position', [0.1, 0.6, 0.8, 0.3]);
-            attackMillisecondsEntry.setLabelProperties('string', 'attack (ms)');
-            releaseMillisecondsEntry = LabeledEntry( ...
-                'parent', theFigure, ...
+            self.attackMillisecondsEntry.setLabelProperties('string', 'attack (ms)');
+            self.releaseMillisecondsEntry = LabeledEntry( ...
+                'parent', self.theFigure, ...
                 'units', 'normalized', ...
                 'position', [0.1, 0.3, 0.8, 0.3]);
-            releaseMillisecondsEntry.setLabelProperties('string', 'release (ms)');
+            self.releaseMillisecondsEntry.setLabelProperties('string', 'release (ms)');
             uicontrol( ...
-                'parent', theFigure, ...
+                'parent', self.theFigure, ...
                 'style', 'pushbutton', ...
                 'units', 'normalized', ...
                 'position', [0.7, 0.1, 0.2, 0.1], ...
                 'string', 'confirm', ...
                 'callback', @(~, ~)self.onConfirm());
+            waitfor(self.theFigure);
         end
         
         function onConfirm(self)
-            self.releaseMilliseconds = 
+            self.releaseMilliseconds = self.releaseMillisecondsEntry.getEntry();
+            self.attackMilliseconds = self.attackMillisecondsEntry.getEntry();
+            close(self.theFigure);
         end
     end
 end
