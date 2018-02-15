@@ -3,6 +3,7 @@ classdef Audiogram < handle
         LOWER_LEVEL_BOUND_HL = -10
         UPPER_LEVEL_BOUND_HL = 120
         LEVEL_STEP_SIZE_HL = 10
+        CANCEL_EXCEPTION_ID = 'Audiogram:userCancel'
     end
     
     properties (Access = private)
@@ -234,21 +235,29 @@ classdef Audiogram < handle
             try
                 self.generatePrescription();
             catch ME
-                errordlg(ME.message, 'error');
+                if strcmpi(ME.identifier, self.CANCEL_EXCEPTION_ID)
+                    return
+                else
+                    errordlg(ME.message, 'Error');
+                end
             end
         end
         
         function generatePrescription(self)
             [fileName, pathName] = uigetfile('*.csv', 'Open DSL output file');
-            if pathName
-                dslFile = [pathName, fileName];
-                DSL = self.generateDSL(dslFile);
-                self.saveDSL(DSL);
+            if ~pathName
+                throw(MException(self.CANCEL_EXCEPTION_ID, ''));
             end
+            dslFile = [pathName, fileName];
+            DSL = self.generateDSL(dslFile);
+            self.saveDSL(DSL);
         end
         
         function DSL = generateDSL(self, dslFile)
             protocol = PrescriptionProtocol();
+            if protocol.userCancels()
+                throw(MException(self.CANCEL_EXCEPTION_ID, ''));
+            end
             attackMilliseconds = protocol.getAttackMilliseconds();
             releaseMilliseconds = protocol.getReleaseMilliseconds();
             channelCount = 8;
