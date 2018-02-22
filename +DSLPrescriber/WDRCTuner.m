@@ -35,7 +35,7 @@ classdef WDRCTuner < handle
         end
         
         function DSL = generateDSL(self)
-            [Cross_freq, Select_channel] = DSLPrescriber.HA_channelselect(self.centerFrequencies, self.Nchannel);
+            [Cross_freq, Select_channel] = self.HA_channelselect(self.centerFrequencies, self.Nchannel);
             Select_channel = [0,Select_channel];
             TK = zeros(1, self.Nchannel);
             CR = zeros(1, self.Nchannel);
@@ -142,6 +142,18 @@ classdef WDRCTuner < handle
             if DSLRawOutput.TargetAvg(8000) - DSLRawOutput.TargetAvg(6300) > 10
                 DSLRawOutput.TargetAvg(8000) = DSLRawOutput.TargetAvg(6300) + 10;
             end
+        end
+        
+        function [Cross_freq, Select_channel] = HA_channelselect(self, cent_freq, Nchannel)
+            Select_channel = zeros(1,Nchannel);
+            Cross_freq = zeros(1,Nchannel-1);
+            bandwidth = (log10(cent_freq(end))-log10(cent_freq(1)))/Nchannel;
+            for i = 1:Nchannel-1
+                Cross_freq(i) = 10^(bandwidth*i + log10(cent_freq(1)));
+                Select_channel(i) = find((cent_freq/Cross_freq(i)) <= 1, 1, 'last');
+            end
+            Select_channel(end) = length(cent_freq);
+            if Nchannel == 16, Select_channel = 2:17; end
         end
         
         function result = averageOverSelectedFrequencies(self, container, frequencies)
