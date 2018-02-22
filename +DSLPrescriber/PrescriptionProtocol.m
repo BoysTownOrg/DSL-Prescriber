@@ -10,7 +10,13 @@ classdef PrescriptionProtocol < handle
     end
     
     methods
-        function self = PrescriptionProtocol()
+        function self = PrescriptionProtocol(defaultAttackMilliseconds, defaultReleaseMilliseconds)
+            if nargin > 0
+                self.attackMilliseconds = defaultAttackMilliseconds;
+            end
+            if nargin > 1
+                self.releaseMilliseconds = defaultReleaseMilliseconds;
+            end
             self.selectionComplete = false;
             self.userCancelled = false;
         end
@@ -54,12 +60,14 @@ classdef PrescriptionProtocol < handle
                 'units', 'normalized', ...
                 'position', [0.1, 0.6, 0.8, 0.25]);
             self.attackMillisecondsEntry.setLabelProperties('string', 'attack (ms)');
+            self.attackMillisecondsEntry.setEntryProperties('string', num2str(self.attackMilliseconds));
             self.attackMillisecondsEntry.setPropertiesForBoth('fontsize', 11);
             self.releaseMillisecondsEntry = DSLPrescriber.LabeledEntry( ...
                 'parent', self.theFigure, ...
                 'units', 'normalized', ...
                 'position', [0.1, 0.3, 0.8, 0.25]);
             self.releaseMillisecondsEntry.setLabelProperties('string', 'release (ms)');
+            self.releaseMillisecondsEntry.setEntryProperties('string', num2str(self.releaseMilliseconds));
             self.releaseMillisecondsEntry.setPropertiesForBoth('fontsize', 11);
             uicontrol( ...
                 'parent', self.theFigure, ...

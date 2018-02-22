@@ -255,7 +255,9 @@ classdef Audiogram < handle
         end
         
         function DSL = generateDSL(self, dslFile)
-            protocol = DSLPrescriber.PrescriptionProtocol();
+            defaultAttackMilliseconds = 5;
+            defaultReleaseMilliseconds = 50;
+            protocol = DSLPrescriber.PrescriptionProtocol(defaultAttackMilliseconds, defaultReleaseMilliseconds);
             if protocol.userCancels()
                 throw(MException(self.CANCEL_EXCEPTION_ID, ''));
             end
