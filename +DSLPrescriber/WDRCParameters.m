@@ -1,4 +1,4 @@
-classdef WDRCParameters < handle
+classdef WDRCParameters
     properties
         attackMilliseconds
         releaseMilliseconds
@@ -9,5 +9,15 @@ classdef WDRCParameters < handle
         TKGain
         CR
         BOLT
+    end
+    
+    methods
+        function self = WDRCParameters(channelCount)
+            self.TK = zeros(1, channelCount);
+            self.CR = zeros(1, channelCount);
+            self.BOLT = zeros(1, channelCount);
+            self.TKGain = zeros(1, channelCount);
+            self.crossFrequencies = zeros(1, channelCount - 1);
+        end
     end
 end

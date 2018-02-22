@@ -29,56 +29,62 @@ classdef WDRCTuner < handle
         end
         
         function DSL = generateDSL(self, attackMilliseconds, releaseMilliseconds)
-            [crossFrequencies, Select_channel] = self.HA_channelselect();
+            parameters = DSLPrescriber.WDRCParameters(self.Nchannel);
+            Select_channel = zeros(1, self.Nchannel);
+            bandwidth = (log10(self.centerFrequencies(end)) - log10(self.centerFrequencies(1))) / self.Nchannel;
+            for i = 1:self.Nchannel-1
+                parameters.crossFrequencies(i) = 10^(bandwidth*i + log10(self.centerFrequencies(1)));
+                Select_channel(i) = find((self.centerFrequencies/parameters.crossFrequencies(i)) <= 1, 1, 'last');
+            end
+            Select_channel(end) = length(self.centerFrequencies);
             Select_channel = [0, Select_channel];
-            TK = zeros(1, self.Nchannel);
-            CR = zeros(1, self.Nchannel);
-            BOLT = zeros(1, self.Nchannel);
-            TKgain = zeros(1, self.Nchannel);
-            adjBOLT = zeros(1, self.Nchannel);
             vTargetAvg = zeros(1, self.Nchannel);
             vSENNcorr = zeros(1, self.Nchannel);
+            preAdjustedBOLT = zeros(1, self.Nchannel);
             for n = 1:self.Nchannel
                 channels = Select_channel(n)+1:Select_channel(n+1);
                 frequencies = self.centerFrequencies(channels);
-                TK(n) = self.averageOverSelectedFrequencies(self.DSLRawOutput.TK, frequencies);
-                CR(n) = self.averageOverSelectedFrequencies(self.DSLRawOutput.CR, frequencies);
-                BOLT(n) = self.averageOverSelectedFrequencies(self.DSLRawOutput.TargetBOLT, frequencies);
-                TKgain(n) = self.averageOverSelectedFrequencies(self.DSLRawOutput.TKgain, frequencies);
+                parameters.TK(n) = self.averageOverSelectedFrequencies(self.DSLRawOutput.TK, frequencies);
+                parameters.CR(n) = self.averageOverSelectedFrequencies(self.DSLRawOutput.CR, frequencies);
+                preAdjustedBOLT(n) = self.averageOverSelectedFrequencies(self.DSLRawOutput.TargetBOLT, frequencies);
+                parameters.TKGain(n) = self.averageOverSelectedFrequencies(self.DSLRawOutput.TKgain, frequencies);
                 vTargetAvg(n) = self.averageOverSelectedFrequencies(self.DSLRawOutput.TargetAvg, frequencies);
                 vSENNcorr(n) = mean(self.SENNCorrection(channels));
-                adjBOLT(n) = BOLT(n) - vSENNcorr(n);
+                parameters.BOLT(n) = preAdjustedBOLT(n) - vSENNcorr(n);
             end
             minGain = -vSENNcorr;
             indices = 1:round(self.Nchannel/4);
             minGain(indices) = minGain(indices) - 10*log10(self.Nchannel); % Correct for channel overlap
             maxGain = 55;
-            rmsdB = 60;
-            maxdB = 119;
+            parameters.maxdB = 119;
+            parameters.rmsdB = 60;
+            parameters.attackMilliseconds = attackMilliseconds;
+            parameters.releaseMilliseconds = releaseMilliseconds;
             [x, Fs] = audioread('Carrots.wav');
             for k = 1:2
-                y = DSLPrescriber.WDRC(crossFrequencies,x,Fs,rmsdB,maxdB,TKgain,CR,TK,adjBOLT,attackMilliseconds,releaseMilliseconds);
-                avg_out = self.speechmap2(maxdB,y,Fs) + self.SENNCorrection;
+                compressor = DSLPrescriber.WDRCompressor(parameters);
+                y = compressor.compress(x, Fs);
+                avg_out = self.speechmap2(parameters.maxdB, y, Fs) + self.SENNCorrection;
                 for n = 1:self.Nchannel
                     vavg_out= mean(avg_out(Select_channel(n)+1:Select_channel(n+1)));
                     diff = vTargetAvg(n) - vavg_out;
-                    TKgain(n) = TKgain(n) + diff;
-                    if TKgain(n) < minGain(n)
-                        TKgain(n) = minGain(n);
+                    parameters.TKGain(n) = parameters.TKGain(n) + diff;
+                    if parameters.TKGain(n) < minGain(n)
+                        parameters.TKGain(n) = minGain(n);
                     end
-                    if TKgain(n) > maxGain
-                        TKgain(n) = maxGain;
+                    if parameters.TKGain(n) > maxGain
+                        parameters.TKGain(n) = maxGain;
                     end
                 end
             end
             DSL.attack = attackMilliseconds;
             DSL.release = releaseMilliseconds;
             DSL.Nchannel = self.Nchannel;
-            DSL.Cross_freq = crossFrequencies;
-            DSL.TKgain = TKgain;
-            DSL.CR = CR;
-            DSL.TK = TK;
-            DSL.BOLT = BOLT;
+            DSL.Cross_freq = parameters.crossFrequencies;
+            DSL.TKgain = parameters.TKGain;
+            DSL.CR = parameters.CR;
+            DSL.TK = parameters.TK;
+            DSL.BOLT = preAdjustedBOLT;
         end
     end
     
@@ -142,17 +148,6 @@ classdef WDRCTuner < handle
             if DSLRawOutput.TargetAvg(8000) - DSLRawOutput.TargetAvg(6300) > 10
                 DSLRawOutput.TargetAvg(8000) = DSLRawOutput.TargetAvg(6300) + 10;
             end
-        end
-        
-        function [crossFrequencies, Select_channel] = HA_channelselect(self)
-            Select_channel = zeros(1, self.Nchannel);
-            crossFrequencies = zeros(1, self.Nchannel - 1);
-            bandwidth = (log10(self.centerFrequencies(end)) - log10(self.centerFrequencies(1))) / self.Nchannel;
-            for i = 1:self.Nchannel-1
-                crossFrequencies(i) = 10^(bandwidth*i + log10(self.centerFrequencies(1)));
-                Select_channel(i) = find((self.centerFrequencies/crossFrequencies(i)) <= 1, 1, 'last');
-            end
-            Select_channel(end) = length(self.centerFrequencies);
         end
         
         function result = averageOverSelectedFrequencies(self, container, frequencies)
