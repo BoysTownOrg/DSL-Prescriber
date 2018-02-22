@@ -62,16 +62,15 @@ classdef WDRCompressor < handle
             channelCount = length(self.parameters.crossFrequencies)+1;
             y = zeros(nsamp+N, channelCount); %Include filter transients
             ft = 175; % Half the width of the filter transition region
-            % First band is a low-pass filter
-            gain = [1 1 0 0];
             nyqfreq = Fs/2;
             if (self.parameters.crossFrequencies(1)-ft) < ft
                 f = [0, self.parameters.crossFrequencies(1) - ft/4, self.parameters.crossFrequencies(1)+ft, nyqfreq]; % frequency points
             else
                 f = [0, self.parameters.crossFrequencies(1)-ft, self.parameters.crossFrequencies(1)+ft, nyqfreq]; % frequency points
             end
+            lowPassGain = [1 1 0 0];
             b = zeros(channelCount, ft+2);
-            b(1, :) = fir2(N, f/nyqfreq, gain); % FIR filter design
+            b(1, :) = fir2(N, f/nyqfreq, lowPassGain); % FIR filter design
             y(:, 1) = conv(x(:), b(1, :));
             % Last band is a high-pass filter
             gain = [0 0 1 1];
