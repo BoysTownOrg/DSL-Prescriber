@@ -69,14 +69,13 @@ classdef WDRCompressor < handle
                 f = [0, self.parameters.crossFrequencies(1)-ft, self.parameters.crossFrequencies(1)+ft, nyqfreq]; % frequency points
             end
             lowPassGain = [1, 1, 0, 0];
-            b = zeros(channelCount, ft+2);
-            b(1, :) = fir2(N, f/nyqfreq, lowPassGain); % FIR filter design
-            y(:, 1) = conv(x(:), b(1, :));
+            b = fir2(N, f/nyqfreq, lowPassGain); % FIR filter design
+            y(:, 1) = conv(x(:), b);
             f = [0, self.parameters.crossFrequencies(channelCount-1)-ft, self.parameters.crossFrequencies(channelCount-1)+ft, nyqfreq];
             % Last band is a high-pass filter
             highPassGain = [0, 0, 1, 1];
-            b(channelCount, :) = fir2(N, f/nyqfreq, highPassGain); %FIR filter design
-            y(:, channelCount) = conv(x(:), b(channelCount, :));
+            b = fir2(N, f/nyqfreq, highPassGain); %FIR filter design
+            y(:, channelCount) = conv(x(:), b);
             % Remaining bands are bandpass filters
             bandPassGain = [0, 0, 1, 1, 0, 0];
             for n = 2:channelCount-1
@@ -85,8 +84,8 @@ classdef WDRCompressor < handle
                 else
                     f = sort([0, self.parameters.crossFrequencies(n-1)-ft, self.parameters.crossFrequencies(n-1)+ft, self.parameters.crossFrequencies(n)-ft, self.parameters.crossFrequencies(n)+ft, nyqfreq]); % frequency points in increasing order
                 end
-                b(n, :) = fir2(N, f/nyqfreq, bandPassGain); %FIR filter design
-                y(:, n) = conv(x(:), b(n, :));
+                b = fir2(N, f/nyqfreq, bandPassGain); %FIR filter design
+                y(:, n) = conv(x(:), b);
             end
         end
 
