@@ -55,22 +55,22 @@ classdef WDRCompressor < handle
     end
     
     methods (Access = private)
-        function y = firFilterBank(self, x, Fs)  
+        function y = firFilterBank(self, x, fs)  
             % 17 freq. bands
             % James M. Kates, 12 December 2008.
             % Last Modified by: J. Alexander 8/27/10
-            if Fs < 22050
+            if fs < 22050
                 error('Signal sampling rate is too low');
             end
             impulseResponseMilliseconds = 8; % Length of the FIR filter impulse response in msec
             impulseResponseSeconds = impulseResponseMilliseconds / 1000;
-            N = round(impulseResponseSeconds * Fs);
+            N = round(impulseResponseSeconds * fs);
             N = 2 * floor(N/2);
             sampleCount = length(x);
             channelCount = length(self.parameters.crossFrequencies) + 1;
             y = zeros(sampleCount+N, channelCount); %Include filter transients
             ft = 175; % Half the width of the filter transition region
-            nyquistFrequency = Fs/2;
+            nyquistFrequency = fs/2;
             if self.parameters.crossFrequencies(1) < 2*ft
                 mysteryFrequency = self.parameters.crossFrequencies(1) - ft/4;
             else
