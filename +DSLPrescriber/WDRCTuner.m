@@ -1,13 +1,11 @@
 classdef WDRCTuner < handle
     properties (Access = private, Constant)
-        centerFrequencies = [200 250 315 400 500 630 800 1000 1250 1600 2000 2500 3150 4000 5000 6300 8000]
+        centerFrequencies = [200, 250, 315, 400, 500, 630, 800, 1000, 1250, 1600, 2000, 2500, 3150, 4000, 5000, 6300, 8000]
         octaveFrequencies = [250, 500, 1000, 2000, 4000]
-        SENNcorrection = [1.2, 1.2, 2.29, 3.72, 5.4, 5.04, 4.86, 5.5, 6.75, 8.94, 12.7, 12.95, 12.6, 9.2, 5.95, 4.26, 13.1]+3
+        SENNCorrection = [1.2, 1.2, 2.29, 3.72, 5.4, 5.04, 4.86, 5.5, 6.75, 8.94, 12.7, 12.95, 12.6, 9.2, 5.95, 4.26, 13.1] + 3
     end
     
     properties (Access = private)
-        attack
-        release
         Nchannel
         DSLRawOutput
         thresholds
@@ -15,8 +13,6 @@ classdef WDRCTuner < handle
     
     methods
         function self = WDRCTuner( ...
-                attack, ...
-                release, ...
                 Nchannel, ...
                 thresholds, ...
                 DSLFile)
@@ -27,14 +23,12 @@ classdef WDRCTuner < handle
             self.verifyDSLThresholdEntries(thresholds, DSLRawOutput.ThreshSPL);
             self.verifyMinimumChannelCountMet(Nchannel, DSLRawOutput.TK);
             self.adjustTargetAverages(thresholds, DSLRawOutput);
-            self.attack = attack;
-            self.release = release;
             self.Nchannel = Nchannel;
             self.DSLRawOutput = DSLRawOutput;
             self.thresholds = thresholds;
         end
         
-        function DSL = generateDSL(self)
+        function DSL = generateDSL(self, attackMilliseconds, releaseMilliseconds)
             [crossFrequencies, Select_channel] = self.HA_channelselect();
             Select_channel = [0, Select_channel];
             TK = zeros(1, self.Nchannel);
@@ -51,7 +45,7 @@ classdef WDRCTuner < handle
                 BOLT(n) = self.averageOverSelectedFrequencies(self.DSLRawOutput.TargetBOLT, frequencies);
                 TKgain(n) = self.averageOverSelectedFrequencies(self.DSLRawOutput.TKgain, frequencies);
                 vTargetAvg(n) = self.averageOverSelectedFrequencies(self.DSLRawOutput.TargetAvg, frequencies);
-                vSENNcorr(n) = mean(self.SENNcorrection(Select_channel(n)+1:Select_channel(n+1)));
+                vSENNcorr(n) = mean(self.SENNCorrection(Select_channel(n)+1:Select_channel(n+1)));
                 adjBOLT(n) = BOLT(n) - vSENNcorr(n);
             end
             minGain = -vSENNcorr;
@@ -61,8 +55,8 @@ classdef WDRCTuner < handle
             maxdB = 119;
             [x, Fs] = audioread('Carrots.wav');
             for k = 1:2
-                y = DSLPrescriber.WDRC(crossFrequencies,x,Fs,rmsdB,maxdB,TKgain,CR,TK,adjBOLT,self.attack,self.release);
-                avg_out = self.speechmap2(maxdB,y,Fs)+self.SENNcorrection;
+                y = DSLPrescriber.WDRC(crossFrequencies,x,Fs,rmsdB,maxdB,TKgain,CR,TK,adjBOLT,attackMilliseconds,releaseMilliseconds);
+                avg_out = self.speechmap2(maxdB,y,Fs)+self.SENNCorrection;
                 for n = 1:self.Nchannel
                     vavg_out= mean(avg_out(Select_channel(n)+1:Select_channel(n+1)));
                     diff = vTargetAvg(n) - vavg_out;
@@ -71,8 +65,8 @@ classdef WDRCTuner < handle
                     if TKgain(n) > maxGain, TKgain(n) = maxGain; end
                 end
             end
-            DSL.attack = self.attack;
-            DSL.release = self.release;
+            DSL.attack = attackMilliseconds;
+            DSL.release = releaseMilliseconds;
             DSL.Nchannel = self.Nchannel;
             DSL.Cross_freq = crossFrequencies;
             DSL.TKgain = TKgain;
