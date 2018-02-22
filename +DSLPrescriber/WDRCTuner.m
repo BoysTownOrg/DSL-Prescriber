@@ -185,17 +185,12 @@ classdef WDRCTuner < handle
             for n = 1:Nsamples
                 startpt = (n-1)*stepSize + 1;
                 y = w .* x(startpt:startpt+windowSize-1);
-                for i = frequencyCount:-1:10
+                for i = frequencyCount:-1:1
+                    if i < 10 && mod(i, 3) == 0
+                        y = decimate(y, 2);
+                    end
                     z = filter(B(i, :), A(i, :), y);
                     P(n, i) = sum(z.^2) / length(z);
-                end
-                for j = 2:-1:0
-                    y = decimate(y, 2);
-                    for k = 3:-1:1
-                        i = j * 3 + k;
-                        z = filter(B(i, :), A(i, :), y);
-                        P(n, i) = sum(z.^2) / length(z);
-                    end
                 end
             end
             banana = zeros(1, frequencyCount);
