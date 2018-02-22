@@ -182,6 +182,7 @@ classdef WDRCTuner < handle
             stepSize = windowSize / 2;
             Nsamples = floor(length(x) / stepSize) - 1;
             w = hann(windowSize);
+            P = zeros(Nsamples, frequencyCount);
             for n = 1:Nsamples
                 head = (n-1)*stepSize + 1;
                 y = w .* x(head:head+windowSize-1);
