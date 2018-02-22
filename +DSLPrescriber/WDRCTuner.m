@@ -23,7 +23,7 @@ classdef WDRCTuner < handle
             assert(thresholds.isKey(6000) || thresholds.isKey(8000), ...
                 ['A threshold must be entered for 6000 or 8000 Hz. ', ...
                 'If no response, please enter 120 dB HL.']);
-            DSLRawOutput = DSLPrescriber.readDSLfile(DSLFile);
+            DSLRawOutput = self.readDSLfile(DSLFile);
             self.verifyDSLThresholdEntries(thresholds, DSLRawOutput.ThreshSPL);
             self.verifyMinimumChannelCountMet(Nchannel, DSLRawOutput.TK);
             self.adjustTargetAverages(thresholds, DSLRawOutput);
@@ -83,6 +83,19 @@ classdef WDRCTuner < handle
     end
     
     methods (Access = private)
+        function fileOutput = readDSLfile(self, filename)
+            a = csvread(filename, 1, 1);
+            frequencies = [200, 250, 315, 400, 500, 630, 800, 1000, 1250, 1600, 2000, 2500, 3150, 4000, 5000, 6300, 8000];
+            columnRange = 1:numel(frequencies);
+            fileOutput = DSLPrescriber.DSLFileOutput();
+            fileOutput.ThreshSPL = containers.Map(frequencies, a(8, columnRange));
+            fileOutput.TK = containers.Map(frequencies, a(15, columnRange));
+            fileOutput.TargetBOLT = containers.Map(frequencies, a(10, columnRange));
+            fileOutput.CR = containers.Map(frequencies, a(17, columnRange));
+            fileOutput.TKgain = containers.Map(frequencies, a(13, columnRange) - a(15, columnRange));
+            fileOutput.TargetAvg = containers.Map(frequencies, a(23, columnRange));
+        end
+
         function verifyDSLThresholdEntries(self, thresholds, DSLRawThresholds)
             for i = 1:numel(self.octaveFrequencies)
                 frequency = self.octaveFrequencies(i);
