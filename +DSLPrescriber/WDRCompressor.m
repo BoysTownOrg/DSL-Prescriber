@@ -49,21 +49,23 @@ classdef WDRCompressor < handle
     methods (Access = private)
         function peak = Smooth_ENV(self, x, attackMilliseconds, releaseMilliseconds, fs)
             % Compute the filter time constants
-            att=0.001*attackMilliseconds*fs/2.425; %ANSI attack time => filter time constant
-            alpha=att/(1.0 + att);
-            rel=0.001*releaseMilliseconds*fs/1.782; %ANSI release time => filter time constant
-            beta=rel/(1.0 + rel);
+            attackSamples = 0.001 * attackMilliseconds * fs;
+            att = attackSamples / 2.425; %ANSI attack time => filter time constant
+            alpha = att/(1.0 + att);
+            releaseSamples = 0.001 * releaseMilliseconds * fs;
+            rel = releaseSamples / 1.782; %ANSI release time => filter time constant
+            beta = rel/(1.0 + rel);
             % Initialze the output array
-            nsamp = size(x, 1);
-            peak = zeros(nsamp, 1);
+            sampleCount = size(x, 1);
+            peak = zeros(sampleCount, 1);
             % Loop to peak detect the signal in each band
             band = abs(x); %Extract the rectified signal in the band
             peak(1) = band(1); %First peak value is the signal sample
-            for k = 2:nsamp
+            for k = 2:sampleCount
                 if band(k) >= peak(k-1)
                     peak(k) = alpha*peak(k-1) + (1-alpha)*band(k);
                 else
-                    peak(k) = beta*peak(k-1);
+                    peak(k) = beta * peak(k-1);
                 end
             end
         end
