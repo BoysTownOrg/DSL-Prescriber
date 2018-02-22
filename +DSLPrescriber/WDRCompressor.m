@@ -12,7 +12,7 @@ classdef WDRCompressor < handle
             old_dB = self.parameters.maxdB + 20.*log10(rms(x));
             scale = 10.^((self.parameters.rmsdB - old_dB)/20);
             x = x.*scale;
-            in_peak = DSLPrescriber.Smooth_ENV(x,1,50,fs);
+            in_peak = self.Smooth_ENV(x, 1, 50, fs);
             in_pdB = self.parameters.maxdB + 20.*log10(in_peak);
             CL_TK = 105; % Compression limiter threshold kneepoint
             CL_CR = 10;  % Compression limiter compression ratio
@@ -34,12 +34,12 @@ classdef WDRCompressor < handle
                 if self.parameters.TKGain(n) < 0
                     self.parameters.BOLT(n) = self.parameters.BOLT(n) + self.parameters.TKGain(n); 
                 end
-                peak = DSLPrescriber.Smooth_ENV(y(:,n),self.parameters.attackMilliseconds,self.parameters.releaseMilliseconds,fs);
+                peak = self.Smooth_ENV(y(:,n),self.parameters.attackMilliseconds,self.parameters.releaseMilliseconds,fs);
                 pdB(:,n) = self.parameters.maxdB+20.*log10(peak);
                 [c(:,n),gdB(:,n)] = self.WDRC_Circuit(y(:,n),self.parameters.TKGain(n),pdB(:,n),self.parameters.TK(n),self.parameters.CR(n),self.parameters.BOLT(n));
             end
             comp=sum(c,2);
-            out_peak = DSLPrescriber.Smooth_ENV(comp,1,50,fs);
+            out_peak = self.Smooth_ENV(comp, 1, 50, fs);
             out_pdB = self.parameters.maxdB + 20.*log10(out_peak);
             out_c = self.WDRC_Circuit(comp,0,out_pdB,CL_TK,CL_CR,CL_TK);
             y = out_c(89:end-88);
@@ -47,6 +47,27 @@ classdef WDRCompressor < handle
     end
     
     methods (Access = private)
+        function peak = Smooth_ENV(self, x, attackMilliseconds, releaseMilliseconds, fs)
+            % Compute the filter time constants
+            att=0.001*attackMilliseconds*fs/2.425; %ANSI attack time => filter time constant
+            alpha=att/(1.0 + att);
+            rel=0.001*releaseMilliseconds*fs/1.782; %ANSI release time => filter time constant
+            beta=rel/(1.0 + rel);
+            % Initialze the output array
+            nsamp = size(x, 1);
+            peak = zeros(nsamp, 1);
+            % Loop to peak detect the signal in each band
+            band = abs(x); %Extract the rectified signal in the band
+            peak(1) = band(1); %First peak value is the signal sample
+            for k = 2:nsamp
+                if band(k) >= peak(k-1)
+                    peak(k) = alpha*peak(k-1) + (1-alpha)*band(k);
+                else
+                    peak(k) = beta*peak(k-1);
+                end
+            end
+        end
+
         function y = HA_fbank2(self, x, Fs)  
             % 17 freq. bands
             % James M. Kates, 12 December 2008.
