@@ -52,8 +52,7 @@ classdef WDRCompressor < handle
             % James M. Kates, 12 December 2008.
             % Last Modified by: J. Alexander 8/27/10
             if Fs < 22050
-                fprintf('Error in HA_fbank: Signal sampling rate is too low.\n');
-                return
+                error('Signal sampling rate is too low');
             end
             impulseResponseMilliseconds = 8; % Length of the FIR filter impulse response in msec
             impulseResponseSeconds = impulseResponseMilliseconds / 1000;
