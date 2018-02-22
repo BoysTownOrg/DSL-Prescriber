@@ -29,7 +29,7 @@ classdef WDRCTuner < handle
         end
         
         function DSL = generateDSL(self, attackMilliseconds, releaseMilliseconds)
-            parameters = DSLPrescriber.WDRCParameters(self.Nchannel);
+            parameters = dslprescriber.WDRCParameters(self.Nchannel);
             Select_channel = zeros(1, self.Nchannel);
             bandwidth = (log10(self.centerFrequencies(end)) - log10(self.centerFrequencies(1))) / self.Nchannel;
             for i = 1:self.Nchannel-1
@@ -62,7 +62,7 @@ classdef WDRCTuner < handle
             parameters.releaseMilliseconds = releaseMilliseconds;
             [x, Fs] = audioread('Carrots.wav');
             for k = 1:2
-                compressor = DSLPrescriber.WDRCompressor(parameters);
+                compressor = dslprescriber.WDRCompressor(parameters);
                 y = compressor.compress(x, Fs);
                 avg_out = self.speechmap2(parameters.maxdB, y, Fs) + self.SENNCorrection;
                 for n = 1:self.Nchannel
@@ -93,7 +93,7 @@ classdef WDRCTuner < handle
             a = csvread(filename, 1, 1);
             frequencies = [200, 250, 315, 400, 500, 630, 800, 1000, 1250, 1600, 2000, 2500, 3150, 4000, 5000, 6300, 8000];
             columnRange = 1:numel(frequencies);
-            fileOutput = DSLPrescriber.DSLFileOutput();
+            fileOutput = dslprescriber.DSLFileOutput();
             fileOutput.ThreshSPL = containers.Map(frequencies, a(8, columnRange));
             fileOutput.TK = containers.Map(frequencies, a(15, columnRange));
             fileOutput.TargetBOLT = containers.Map(frequencies, a(10, columnRange));
@@ -105,7 +105,7 @@ classdef WDRCTuner < handle
         function verifyDSLThresholdEntries(self, thresholds, DSLRawThresholds)
             for i = 1:numel(self.octaveFrequencies)
                 frequency = self.octaveFrequencies(i);
-                correctedThreshold = round(thresholds(frequency) + DSLPrescriber.TDHCorrections.levels(frequency), 1);
+                correctedThreshold = round(thresholds(frequency) + dslprescriber.TDHCorrections.levels(frequency), 1);
                 assert(correctedThreshold == DSLRawThresholds(frequency), ...
                     sprintf( ...
                     'You entered %g in the DSL program instead of %g at %g Hz', ...
@@ -134,7 +134,7 @@ classdef WDRCTuner < handle
             correctedThresholds = zeros(1, numel(frequencies));
             for i = 1:numel(frequencies)
                 frequency = frequencies(i);
-                correctedThresholds(i) = thresholds(frequency) + DSLPrescriber.TDHCorrections.levels(frequency);
+                correctedThresholds(i) = thresholds(frequency) + dslprescriber.TDHCorrections.levels(frequency);
             end
             thirdOctaveThresholds = containers.Map(self.centerFrequencies, ...
                 interp1(frequencies, correctedThresholds, self.centerFrequencies));

@@ -12,7 +12,7 @@ classdef WDRCompressor < handle
             old_dB = self.parameters.maxdB + 20.*log10(rms(x));
             scale = 10.^((self.parameters.rmsdB - old_dB)/20);
             x = x.*scale;
-            smoothEnvelope = DSLPrescriber.SmoothEnvelope(1, 50);
+            smoothEnvelope = dslprescriber.SmoothEnvelope(1, 50);
             in_peak = smoothEnvelope.process(x, fs);
             in_pdB = self.parameters.maxdB + 20.*log10(in_peak);
             CL_TK = 105; % Compression limiter threshold kneepoint
@@ -35,13 +35,13 @@ classdef WDRCompressor < handle
                 if self.parameters.TKGain(n) < 0
                     self.parameters.BOLT(n) = self.parameters.BOLT(n) + self.parameters.TKGain(n); 
                 end
-                smoothEnvelope = DSLPrescriber.SmoothEnvelope(self.parameters.attackMilliseconds, self.parameters.releaseMilliseconds);
+                smoothEnvelope = dslprescriber.SmoothEnvelope(self.parameters.attackMilliseconds, self.parameters.releaseMilliseconds);
                 peak = smoothEnvelope.process(y(:,n), fs);
                 pdB(:,n) = self.parameters.maxdB+20.*log10(peak);
                 [c(:,n),gdB(:,n)] = self.WDRC_Circuit(y(:,n),self.parameters.TKGain(n),pdB(:,n),self.parameters.TK(n),self.parameters.CR(n),self.parameters.BOLT(n));
             end
             comp=sum(c,2);
-            smoothEnvelope = DSLPrescriber.SmoothEnvelope(1, 50);
+            smoothEnvelope = dslprescriber.SmoothEnvelope(1, 50);
             out_peak = smoothEnvelope.process(comp, fs);
             out_pdB = self.parameters.maxdB + 20.*log10(out_peak);
             out_c = self.WDRC_Circuit(comp,0,out_pdB,CL_TK,CL_CR,CL_TK);

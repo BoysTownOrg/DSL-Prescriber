@@ -1,4 +1,4 @@
 function runTests()
-runtests('DSLPrescriber.test')
+runtests('dslprescriber.test')
 end
 
