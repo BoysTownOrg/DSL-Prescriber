@@ -58,13 +58,13 @@ classdef WDRCTuner < handle
             [x, Fs] = audioread('Carrots.wav');
             for k = 1:2
                 y = DSLPrescriber.WDRC(crossFrequencies,x,Fs,rmsdB,maxdB,TKgain,CR,TK,adjBOLT,attackMilliseconds,releaseMilliseconds);
-                avg_out = self.speechmap2(maxdB,y,Fs)+self.SENNCorrection;
+                avg_out = self.speechmap2(maxdB,y,Fs) + self.SENNCorrection;
                 for n = 1:self.Nchannel
                     vavg_out= mean(avg_out(Select_channel(n)+1:Select_channel(n+1)));
                     diff = vTargetAvg(n) - vavg_out;
                     TKgain(n) = TKgain(n) + diff;
                     if TKgain(n) < minGain(n)
-                        TKgain(n) = minGain(n); 
+                        TKgain(n) = minGain(n);
                     end
                     if TKgain(n) > maxGain
                         TKgain(n) = maxGain;
