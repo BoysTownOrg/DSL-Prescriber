@@ -9,12 +9,12 @@ classdef WDRCompressor < handle
         end
         
         function y = compress(self, x, fs)
-            old_dB = self.parameters.maxdB + 20.*log10(rms(x));
-            scale = 10.^((self.parameters.rmsdB - old_dB)/20);
-            x = x.*scale;
+            differencedB = self.parameters.rmsdB - self.parameters.maxdB;
+            scale = 10^(differencedB/20) / rms(x);
+            x = x * scale;
             smoothEnvelope = dslprescriber.SmoothEnvelope(1, 50);
             in_peak = smoothEnvelope.process(x, fs);
-            in_pdB = self.parameters.maxdB + 20.*log10(in_peak);
+            in_pdB = self.parameters.maxdB + 20*log10(in_peak);
             CL_TK = 105; % Compression limiter threshold kneepoint
             CL_CR = 10;  % Compression limiter compression ratio
             in_c = self.WDRC_Circuit(x,0,in_pdB,CL_TK,CL_CR,CL_TK);
