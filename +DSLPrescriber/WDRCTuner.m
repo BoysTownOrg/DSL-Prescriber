@@ -35,8 +35,8 @@ classdef WDRCTuner < handle
         end
         
         function DSL = generateDSL(self)
-            [Cross_freq, Select_channel] = self.HA_channelselect();
-            Select_channel = [0,Select_channel];
+            [crossFrequencies, Select_channel] = self.HA_channelselect();
+            Select_channel = [0, Select_channel];
             TK = zeros(1, self.Nchannel);
             CR = zeros(1, self.Nchannel);
             BOLT = zeros(1, self.Nchannel);
@@ -52,16 +52,16 @@ classdef WDRCTuner < handle
                 TKgain(n) = self.averageOverSelectedFrequencies(self.DSLRawOutput.TKgain, frequencies);
                 vTargetAvg(n) = self.averageOverSelectedFrequencies(self.DSLRawOutput.TargetAvg, frequencies);
                 vSENNcorr(n) = mean(self.SENNcorrection(Select_channel(n)+1:Select_channel(n+1)));
-                adjBOLT(n) = BOLT(n)-vSENNcorr(n);
+                adjBOLT(n) = BOLT(n) - vSENNcorr(n);
             end
             minGain = -vSENNcorr;
-            minGain(1:round(self.Nchannel/4)) = minGain(1:round(self.Nchannel/4))-10*log10(self.Nchannel); % Correct for channel overlap
+            minGain(1:round(self.Nchannel/4)) = minGain(1:round(self.Nchannel/4)) - 10*log10(self.Nchannel); % Correct for channel overlap
             maxGain = 55;
             rmsdB = 60;
             maxdB = 119;
-            [x,Fs] = audioread('Carrots.wav');
+            [x, Fs] = audioread('Carrots.wav');
             for k = 1:2
-                y = DSLPrescriber.WDRC(Cross_freq,x,Fs,rmsdB,maxdB,TKgain,CR,TK,adjBOLT,self.attack,self.release);
+                y = DSLPrescriber.WDRC(crossFrequencies,x,Fs,rmsdB,maxdB,TKgain,CR,TK,adjBOLT,self.attack,self.release);
                 avg_out = self.speechmap2(maxdB,y,Fs)+self.SENNcorrection;
                 for n = 1:self.Nchannel
                     vavg_out= mean(avg_out(Select_channel(n)+1:Select_channel(n+1)));
@@ -74,7 +74,7 @@ classdef WDRCTuner < handle
             DSL.attack = self.attack;
             DSL.release = self.release;
             DSL.Nchannel = self.Nchannel;
-            DSL.Cross_freq = Cross_freq;
+            DSL.Cross_freq = crossFrequencies;
             DSL.TKgain = TKgain;
             DSL.CR = CR;
             DSL.TK = TK;
@@ -144,13 +144,13 @@ classdef WDRCTuner < handle
             end
         end
         
-        function [Cross_freq, Select_channel] = HA_channelselect(self)
+        function [crossFrequencies, Select_channel] = HA_channelselect(self)
             Select_channel = zeros(1, self.Nchannel);
-            Cross_freq = zeros(1, self.Nchannel-1);
+            crossFrequencies = zeros(1, self.Nchannel - 1);
             bandwidth = (log10(self.centerFrequencies(end)) - log10(self.centerFrequencies(1))) / self.Nchannel;
             for i = 1:self.Nchannel-1
-                Cross_freq(i) = 10^(bandwidth*i + log10(self.centerFrequencies(1)));
-                Select_channel(i) = find((self.centerFrequencies/Cross_freq(i)) <= 1, 1, 'last');
+                crossFrequencies(i) = 10^(bandwidth*i + log10(self.centerFrequencies(1)));
+                Select_channel(i) = find((self.centerFrequencies/crossFrequencies(i)) <= 1, 1, 'last');
             end
             Select_channel(end) = length(self.centerFrequencies);
         end
@@ -232,16 +232,12 @@ classdef WDRCTuner < handle
             %        Octave-Band and Fractional-Octave-Band Analog and
             %        Digital Filters, 1993.
 
-            if (nargin == 2)
-                N = 3;
-            end
             if (Fc > 0.88*(Fs/2))
                 error('Design not possible. Check frequencies.');
             end
 
             % Design Butterworth 2Nth-order one-third-octave filter
             % Note: BUTTER is based on a bilinear transformation, as suggested in [1].
-            pi = 3.14159265358979;
             f1 = Fc/(2^(1/6));
             f2 = Fc*(2^(1/6));
             Qr = Fc/(f2-f1);
