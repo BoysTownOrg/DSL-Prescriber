@@ -101,20 +101,20 @@ classdef WDRCompressor < handle
             end
         end
 
-        function [comp,gdB] = WDRC_Circuit(self, x,TKgain,pdB,TK,CR,BOLT)
-            if TK+TKgain > BOLT
-                TK = BOLT-TKgain; 
+        function [comp, gdB] = WDRC_Circuit(self, x, TKGain, pdB, TK, CR, BOLT)
+            if TK + TKGain > BOLT
+                TK = BOLT - TKGain; 
             end
-            TKgain_origin = TKgain + (TK.*(1-1./CR));
-            gdB = ((1./CR)-1).*pdB + TKgain_origin;
+            TKGainOrigin = TKGain + TK .* (1 - 1./CR);
+            gdB = (1./CR - 1) .* pdB + TKGainOrigin;
             if CR >= 1
-                gdB(pdB < TK) = TKgain;
+                gdB(pdB < TK) = TKGain;
             end
-            pBOLT = CR*(BOLT - TKgain_origin);
+            pBOLT = CR*(BOLT - TKGainOrigin);
             I = pdB > pBOLT;
-            gdB(I) = BOLT+((pdB(I)-pBOLT)*1/10)-pdB(I);
-            g=10.^(gdB/20);
-            comp=x.*g;
+            gdB(I) = BOLT + (pdB(I) - pBOLT)/10 - pdB(I);
+            g = 10 .^ (gdB/20);
+            comp = x .* g;
         end
     end
 end
