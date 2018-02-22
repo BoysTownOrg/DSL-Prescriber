@@ -39,13 +39,14 @@ classdef WDRCTuner < handle
             vTargetAvg = zeros(1, self.Nchannel);
             vSENNcorr = zeros(1, self.Nchannel);
             for n = 1:self.Nchannel
-                frequencies = self.centerFrequencies(Select_channel(n)+1:Select_channel(n+1));
+                channels = Select_channel(n)+1:Select_channel(n+1);
+                frequencies = self.centerFrequencies(channels);
                 TK(n) = self.averageOverSelectedFrequencies(self.DSLRawOutput.TK, frequencies);
                 CR(n) = self.averageOverSelectedFrequencies(self.DSLRawOutput.CR, frequencies);
                 BOLT(n) = self.averageOverSelectedFrequencies(self.DSLRawOutput.TargetBOLT, frequencies);
                 TKgain(n) = self.averageOverSelectedFrequencies(self.DSLRawOutput.TKgain, frequencies);
                 vTargetAvg(n) = self.averageOverSelectedFrequencies(self.DSLRawOutput.TargetAvg, frequencies);
-                vSENNcorr(n) = mean(self.SENNCorrection(Select_channel(n)+1:Select_channel(n+1)));
+                vSENNcorr(n) = mean(self.SENNCorrection(channels));
                 adjBOLT(n) = BOLT(n) - vSENNcorr(n);
             end
             minGain = -vSENNcorr;
