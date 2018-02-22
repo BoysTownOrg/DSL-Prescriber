@@ -13,20 +13,19 @@ classdef WDRCompressor < handle
             scale = 10^(differencedB/20) / rms(x);
             x = x * scale;
             smoothEnvelope = dslprescriber.SmoothEnvelope(1, 50);
-            in_peak = smoothEnvelope.process(x, fs);
-            in_pdB = self.parameters.maxdB + 20*log10(in_peak);
+            inputPeaks = smoothEnvelope.process(x, fs);
+            inputPeaksdB = self.parameters.maxdB + 20*log10(inputPeaks);
             compressionLimiterTK = 105;
             compressionLimiterCR = 10;
             TKGain = 0;
-            in_c = self.WDRC_Circuit(x, TKGain, in_pdB, compressionLimiterTK, compressionLimiterCR, compressionLimiterTK);
+            compressedInput = self.WDRC_Circuit(x, TKGain, inputPeaksdB, compressionLimiterTK, compressionLimiterCR, compressionLimiterTK);
             Nchannel = length(self.parameters.TKGain);
             if Nchannel > 1
-                y = self.firFilterBank(in_c, fs);
+                y = self.firFilterBank(compressedInput, fs);
             else
-                y = in_c;
+                y = compressedInput;
             end
             sampleCount = size(y, 1);
-            pdB = zeros(sampleCount, Nchannel);
             c = zeros(sampleCount, Nchannel);
             gdB = zeros(sampleCount, Nchannel);
             smoothEnvelope = dslprescriber.SmoothEnvelope(self.parameters.attackMilliseconds, self.parameters.releaseMilliseconds);
@@ -37,9 +36,9 @@ classdef WDRCompressor < handle
                 if self.parameters.TKGain(n) < 0
                     self.parameters.BOLT(n) = self.parameters.BOLT(n) + self.parameters.TKGain(n); 
                 end
-                peak = smoothEnvelope.process(y(:,n), fs);
-                pdB(:,n) = self.parameters.maxdB + 20*log10(peak);
-                [c(:,n), gdB(:,n)] = self.WDRC_Circuit(y(:,n), self.parameters.TKGain(n), pdB(:,n), self.parameters.TK(n), self.parameters.CR(n), self.parameters.BOLT(n));
+                peaks = smoothEnvelope.process(y(:,n), fs);
+                peaksdB = self.parameters.maxdB + 20*log10(peaks);
+                [c(:,n), gdB(:,n)] = self.WDRC_Circuit(y(:,n), self.parameters.TKGain(n), peaksdB, self.parameters.TK(n), self.parameters.CR(n), self.parameters.BOLT(n));
             end
             comp = sum(c, 2);
             smoothEnvelope = dslprescriber.SmoothEnvelope(1, 50);
