@@ -50,7 +50,8 @@ classdef WDRCTuner < handle
                 adjBOLT(n) = BOLT(n) - vSENNcorr(n);
             end
             minGain = -vSENNcorr;
-            minGain(1:round(self.Nchannel/4)) = minGain(1:round(self.Nchannel/4)) - 10*log10(self.Nchannel); % Correct for channel overlap
+            indices = 1:round(self.Nchannel/4);
+            minGain(indices) = minGain(indices) - 10*log10(self.Nchannel); % Correct for channel overlap
             maxGain = 55;
             rmsdB = 60;
             maxdB = 119;
@@ -61,9 +62,13 @@ classdef WDRCTuner < handle
                 for n = 1:self.Nchannel
                     vavg_out= mean(avg_out(Select_channel(n)+1:Select_channel(n+1)));
                     diff = vTargetAvg(n) - vavg_out;
-                    TKgain(n) = TKgain(n)+diff;
-                    if TKgain(n) < minGain(n), TKgain(n) = minGain(n); end
-                    if TKgain(n) > maxGain, TKgain(n) = maxGain; end
+                    TKgain(n) = TKgain(n) + diff;
+                    if TKgain(n) < minGain(n)
+                        TKgain(n) = minGain(n); 
+                    end
+                    if TKgain(n) > maxGain
+                        TKgain(n) = maxGain;
+                    end
                 end
             end
             DSL.attack = attackMilliseconds;
