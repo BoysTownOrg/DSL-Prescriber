@@ -73,8 +73,8 @@ classdef PrescriptionProtocol < handle
         end
         
         function onConfirm(self)
-            self.releaseMilliseconds = self.releaseMillisecondsEntry.getEntry();
-            self.attackMilliseconds = self.attackMillisecondsEntry.getEntry();
+            self.releaseMilliseconds = str2double(self.releaseMillisecondsEntry.getEntry());
+            self.attackMilliseconds = str2double(self.attackMillisecondsEntry.getEntry());
             delete(self.theFigure);
         end
         
