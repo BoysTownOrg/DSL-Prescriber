@@ -64,7 +64,7 @@ classdef WDRCTuner < handle
             for k = 1:2
                 compressor = dslprescriber.WDRCompressor(parameters);
                 y = compressor.compress(x, Fs);
-                avg_out = self.speechmap2(parameters.maxdB, y, Fs) + self.SENNCorrection;
+                avg_out = parameters.maxdB + self.speechmap2(y, Fs) + self.SENNCorrection;
                 for n = 1:self.Nchannel
                     vavg_out= mean(avg_out(Select_channel(n)+1:Select_channel(n+1)));
                     diff = vTargetAvg(n) - vavg_out;
@@ -158,7 +158,7 @@ classdef WDRCTuner < handle
             result = sum / numel(frequencies);
         end
         
-        function banana = speechmap2(self, maxdB, x, fs)
+        function banana = speechmap2(self, x, fs)
             frequencyCount = 17;
             centerFrequencies = 1000 * (2^(1/3)).^(-7:frequencyCount-8);
             N = 3; 					% Order of analysis filters.
@@ -183,8 +183,8 @@ classdef WDRCTuner < handle
             Nsamples = floor(length(x) / stepSize) - 1;
             w = hann(windowSize);
             for n = 1:Nsamples
-                startpt = (n-1)*stepSize + 1;
-                y = w .* x(startpt:startpt+windowSize-1);
+                head = (n-1)*stepSize + 1;
+                y = w .* x(head:head+windowSize-1);
                 for i = frequencyCount:-1:1
                     if i < 10 && mod(i, 3) == 0
                         y = decimate(y, 2);
@@ -193,10 +193,7 @@ classdef WDRCTuner < handle
                     P(n, i) = sum(z.^2) / length(z);
                 end
             end
-            banana = zeros(1, frequencyCount);
-            for n = 1:frequencyCount
-                banana(n) = maxdB + 10*log10((mean(P(:,n))));
-            end
+            banana = 10*log10((mean(P)));
         end
         
         function [B, A] = oct3dsgn(self, Fc, Fs, N)
