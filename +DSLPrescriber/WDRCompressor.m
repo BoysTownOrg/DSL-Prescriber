@@ -12,7 +12,9 @@ classdef WDRCompressor < handle
             differencedB = self.parameters.rmsdB - self.parameters.maxdB;
             scale = 10^(differencedB/20) / rms(x);
             x = x * scale;
-            smoothEnvelope = dslprescriber.SmoothEnvelope(1, 50);
+            attackMilliseconds = 1;
+            releaseMilliseconds = 50;
+            smoothEnvelope = dslprescriber.SmoothEnvelope(attackMilliseconds, releaseMilliseconds);
             inputPeaks = smoothEnvelope.process(x, fs);
             inputPeaksdB = self.parameters.maxdB + 20*log10(inputPeaks);
             compressionLimiterTK = 105;
@@ -41,7 +43,9 @@ classdef WDRCompressor < handle
                 [c(:,n), gdB(:,n)] = self.WDRC_Circuit(y(:,n), self.parameters.TKGain(n), peaksdB, self.parameters.TK(n), self.parameters.CR(n), self.parameters.BOLT(n));
             end
             comp = sum(c, 2);
-            smoothEnvelope = dslprescriber.SmoothEnvelope(1, 50);
+            attackMilliseconds = 1;
+            releaseMilliseconds = 50;
+            smoothEnvelope = dslprescriber.SmoothEnvelope(attackMilliseconds, releaseMilliseconds);
             out_peak = smoothEnvelope.process(comp, fs);
             out_pdB = self.parameters.maxdB + 20*log10(out_peak);
             TKGain = 0;
