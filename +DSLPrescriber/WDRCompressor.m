@@ -15,42 +15,44 @@ classdef WDRCompressor < handle
             smoothEnvelope = dslprescriber.SmoothEnvelope(1, 50);
             in_peak = smoothEnvelope.process(x, fs);
             in_pdB = self.parameters.maxdB + 20*log10(in_peak);
-            CL_TK = 105; % Compression limiter threshold kneepoint
-            CL_CR = 10;  % Compression limiter compression ratio
-            in_c = self.WDRC_Circuit(x,0,in_pdB,CL_TK,CL_CR,CL_TK);
+            compressionLimiterTK = 105;
+            compressionLimiterCR = 10;
+            TKGain = 0;
+            in_c = self.WDRC_Circuit(x, TKGain, in_pdB, compressionLimiterTK, compressionLimiterCR, compressionLimiterTK);
             Nchannel = length(self.parameters.TKGain);
             if Nchannel > 1
-                y = self.HA_fbank2(in_c, fs);    % Nchannel FIR filter bank
+                y = self.firFilterBank(in_c, fs);
             else
                 y = in_c;
             end
-            nsamp = size(y,1);
-            pdB = zeros(nsamp, Nchannel);
-            c = zeros(nsamp, Nchannel);
-            gdB = zeros(nsamp, Nchannel);
+            sampleCount = size(y, 1);
+            pdB = zeros(sampleCount, Nchannel);
+            c = zeros(sampleCount, Nchannel);
+            gdB = zeros(sampleCount, Nchannel);
+            smoothEnvelope = dslprescriber.SmoothEnvelope(self.parameters.attackMilliseconds, self.parameters.releaseMilliseconds);
             for n = 1:Nchannel
-                if self.parameters.BOLT(n) > CL_TK
-                    self.parameters.BOLT(n) = CL_TK; 
+                if self.parameters.BOLT(n) > compressionLimiterTK
+                    self.parameters.BOLT(n) = compressionLimiterTK; 
                 end
                 if self.parameters.TKGain(n) < 0
                     self.parameters.BOLT(n) = self.parameters.BOLT(n) + self.parameters.TKGain(n); 
                 end
-                smoothEnvelope = dslprescriber.SmoothEnvelope(self.parameters.attackMilliseconds, self.parameters.releaseMilliseconds);
                 peak = smoothEnvelope.process(y(:,n), fs);
-                pdB(:,n) = self.parameters.maxdB+20.*log10(peak);
-                [c(:,n),gdB(:,n)] = self.WDRC_Circuit(y(:,n),self.parameters.TKGain(n),pdB(:,n),self.parameters.TK(n),self.parameters.CR(n),self.parameters.BOLT(n));
+                pdB(:,n) = self.parameters.maxdB + 20*log10(peak);
+                [c(:,n), gdB(:,n)] = self.WDRC_Circuit(y(:,n), self.parameters.TKGain(n), pdB(:,n), self.parameters.TK(n), self.parameters.CR(n), self.parameters.BOLT(n));
             end
-            comp=sum(c,2);
+            comp = sum(c, 2);
             smoothEnvelope = dslprescriber.SmoothEnvelope(1, 50);
             out_peak = smoothEnvelope.process(comp, fs);
-            out_pdB = self.parameters.maxdB + 20.*log10(out_peak);
-            out_c = self.WDRC_Circuit(comp,0,out_pdB,CL_TK,CL_CR,CL_TK);
+            out_pdB = self.parameters.maxdB + 20*log10(out_peak);
+            TKGain = 0;
+            out_c = self.WDRC_Circuit(comp, TKGain, out_pdB, compressionLimiterTK, compressionLimiterCR, compressionLimiterTK);
             y = out_c(89:end-88);
         end
     end
     
     methods (Access = private)
-        function y = HA_fbank2(self, x, Fs)  
+        function y = firFilterBank(self, x, Fs)  
             % 17 freq. bands
             % James M. Kates, 12 December 2008.
             % Last Modified by: J. Alexander 8/27/10
