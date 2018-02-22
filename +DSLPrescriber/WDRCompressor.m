@@ -59,32 +59,32 @@ classdef WDRCompressor < handle
             N = round(impulseResponseSeconds * Fs); % Length of the FIR filters in samples
             N = 2 * floor(N/2); % Force filter length to be even
             nsamp = length(x);
-            channelCount = length(self.parameters.crossFrequencies)+1;
+            channelCount = length(self.parameters.crossFrequencies) + 1;
             y = zeros(nsamp+N, channelCount); %Include filter transients
             ft = 175; % Half the width of the filter transition region
-            nyqfreq = Fs/2;
-            if (self.parameters.crossFrequencies(1)-ft) < ft
-                f = [0, self.parameters.crossFrequencies(1) - ft/4, self.parameters.crossFrequencies(1)+ft, nyqfreq]; % frequency points
+            nyquistFrequency = Fs/2;
+            if self.parameters.crossFrequencies(1) - ft < ft
+                f = [0, self.parameters.crossFrequencies(1) - ft/4, self.parameters.crossFrequencies(1) + ft, nyquistFrequency]; % frequency points
             else
-                f = [0, self.parameters.crossFrequencies(1)-ft, self.parameters.crossFrequencies(1)+ft, nyqfreq]; % frequency points
+                f = [0, self.parameters.crossFrequencies(1) - ft, self.parameters.crossFrequencies(1) + ft, nyquistFrequency]; % frequency points
             end
             lowPassGain = [1, 1, 0, 0];
-            b = fir2(N, f/nyqfreq, lowPassGain); % FIR filter design
+            b = fir2(N, f/nyquistFrequency, lowPassGain); % FIR filter design
             y(:, 1) = conv(x(:), b);
-            f = [0, self.parameters.crossFrequencies(channelCount-1)-ft, self.parameters.crossFrequencies(channelCount-1)+ft, nyqfreq];
+            f = [0, self.parameters.crossFrequencies(end) - ft, self.parameters.crossFrequencies(end) + ft, nyquistFrequency];
             % Last band is a high-pass filter
             highPassGain = [0, 0, 1, 1];
-            b = fir2(N, f/nyqfreq, highPassGain); %FIR filter design
+            b = fir2(N, f/nyquistFrequency, highPassGain); %FIR filter design
             y(:, channelCount) = conv(x(:), b);
             % Remaining bands are bandpass filters
             bandPassGain = [0, 0, 1, 1, 0, 0];
             for n = 2:channelCount-1
                 if (self.parameters.crossFrequencies(n-1)-ft) < ft
-                    f = sort([0, self.parameters.crossFrequencies(n-1)-(ft/4), self.parameters.crossFrequencies(n-1)+ft, self.parameters.crossFrequencies(n)-ft, self.parameters.crossFrequencies(n)+ft, nyqfreq]); % frequency points in increasing order
+                    f = sort([0, self.parameters.crossFrequencies(n-1)-(ft/4), self.parameters.crossFrequencies(n-1)+ft, self.parameters.crossFrequencies(n)-ft, self.parameters.crossFrequencies(n)+ft, nyquistFrequency]); % frequency points in increasing order
                 else
-                    f = sort([0, self.parameters.crossFrequencies(n-1)-ft, self.parameters.crossFrequencies(n-1)+ft, self.parameters.crossFrequencies(n)-ft, self.parameters.crossFrequencies(n)+ft, nyqfreq]); % frequency points in increasing order
+                    f = sort([0, self.parameters.crossFrequencies(n-1)-ft, self.parameters.crossFrequencies(n-1)+ft, self.parameters.crossFrequencies(n)-ft, self.parameters.crossFrequencies(n)+ft, nyquistFrequency]); % frequency points in increasing order
                 end
-                b = fir2(N, f/nyqfreq, bandPassGain); %FIR filter design
+                b = fir2(N, f/nyquistFrequency, bandPassGain); %FIR filter design
                 y(:, n) = conv(x(:), b);
             end
         end
