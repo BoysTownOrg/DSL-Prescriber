@@ -30,19 +30,14 @@ classdef WDRCTuner < handle
         
         function DSL = generateDSL(self, attackMilliseconds, releaseMilliseconds)
             compressionParameters = dslprescriber.WDRCParameters(self.Nchannel);
-            Select_channel = zeros(1, self.Nchannel);
             bandwidth = (log10(self.centerFrequencies(end)) - log10(self.centerFrequencies(1))) / self.Nchannel;
             compressionParameters.crossFrequencies = 10.^(bandwidth*(1:self.Nchannel-1) + log10(self.centerFrequencies(1)));
-            for i = 1:self.Nchannel-1
-                Select_channel(i) = find((self.centerFrequencies/compressionParameters.crossFrequencies(i)) <= 1, 1, 'last');
-            end
-            Select_channel(end) = length(self.centerFrequencies);
-            Select_channel = [0, Select_channel];
+            selectedChannels = getSelectedChannels(self, compressionParameters.crossFrequencies);
             vTargetAvg = zeros(1, self.Nchannel);
             vSENNcorr = zeros(1, self.Nchannel);
             preAdjustedBOLT = zeros(1, self.Nchannel);
             for n = 1:self.Nchannel
-                channels = Select_channel(n)+1:Select_channel(n+1);
+                channels = selectedChannels(n)+1:selectedChannels(n+1);
                 frequencies = self.centerFrequencies(channels);
                 compressionParameters.TK(n) = self.averageOverSelectedFrequencies(self.DSLRawOutput.TK, frequencies);
                 compressionParameters.CR(n) = self.averageOverSelectedFrequencies(self.DSLRawOutput.CR, frequencies);
@@ -66,7 +61,7 @@ classdef WDRCTuner < handle
                 y = compressor.compress(x, Fs);
                 avg_out = compressionParameters.maxdB + self.speechmap2(y, Fs) + self.SENNCorrection;
                 for n = 1:self.Nchannel
-                    vavg_out= mean(avg_out(Select_channel(n)+1:Select_channel(n+1)));
+                    vavg_out= mean(avg_out(selectedChannels(n)+1:selectedChannels(n+1)));
                     diff = vTargetAvg(n) - vavg_out;
                     compressionParameters.TKGain(n) = compressionParameters.TKGain(n) + diff;
                     if compressionParameters.TKGain(n) < minGain(n)
@@ -148,6 +143,14 @@ classdef WDRCTuner < handle
             if DSLRawOutput.TargetAvg(8000) - DSLRawOutput.TargetAvg(6300) > 10
                 DSLRawOutput.TargetAvg(8000) = DSLRawOutput.TargetAvg(6300) + 10;
             end
+        end
+        
+        function channels = getSelectedChannels(self, crossFrequencies)
+            channels = zeros(1, self.Nchannel + 1);
+            for i = 1:self.Nchannel-1
+                channels(i+1) = find((self.centerFrequencies/crossFrequencies(i)) <= 1, 1, 'last');
+            end
+            channels(end) = length(self.centerFrequencies);
         end
         
         function result = averageOverSelectedFrequencies(self, container, frequencies)
