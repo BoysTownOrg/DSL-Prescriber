@@ -30,8 +30,7 @@ classdef WDRCTuner < handle
         
         function DSL = generateDSL(self, attackMilliseconds, releaseMilliseconds)
             compressionParameters = dslprescriber.WDRCParameters(self.Nchannel);
-            bandwidth = (log10(self.centerFrequencies(end)) - log10(self.centerFrequencies(1))) / self.Nchannel;
-            compressionParameters.crossFrequencies = 10.^(bandwidth*(1:self.Nchannel-1) + log10(self.centerFrequencies(1)));
+            compressionParameters.crossFrequencies = self.getCrossFrequencies();
             selectedChannels = getSelectedChannels(self, compressionParameters.crossFrequencies);
             vTargetAvg = zeros(1, self.Nchannel);
             vSENNcorr = zeros(1, self.Nchannel);
@@ -143,6 +142,11 @@ classdef WDRCTuner < handle
             if DSLRawOutput.TargetAvg(8000) - DSLRawOutput.TargetAvg(6300) > 10
                 DSLRawOutput.TargetAvg(8000) = DSLRawOutput.TargetAvg(6300) + 10;
             end
+        end
+        
+        function frequencies = getCrossFrequencies(self)
+            bandwidth = (log10(self.centerFrequencies(end)) - log10(self.centerFrequencies(1))) / self.Nchannel;
+            frequencies = 10.^(bandwidth*(1:self.Nchannel-1) + log10(self.centerFrequencies(1)));
         end
         
         function channels = getSelectedChannels(self, crossFrequencies)
