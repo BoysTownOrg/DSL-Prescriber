@@ -29,12 +29,12 @@ classdef WDRCTuner < handle
         end
         
         function DSL = generateDSL(self, attackMilliseconds, releaseMilliseconds)
-            parameters = dslprescriber.WDRCParameters(self.Nchannel);
+            compressionParameters = dslprescriber.WDRCParameters(self.Nchannel);
             Select_channel = zeros(1, self.Nchannel);
             bandwidth = (log10(self.centerFrequencies(end)) - log10(self.centerFrequencies(1))) / self.Nchannel;
+            compressionParameters.crossFrequencies = 10.^(bandwidth*(1:self.Nchannel-1) + log10(self.centerFrequencies(1)));
             for i = 1:self.Nchannel-1
-                parameters.crossFrequencies(i) = 10^(bandwidth*i + log10(self.centerFrequencies(1)));
-                Select_channel(i) = find((self.centerFrequencies/parameters.crossFrequencies(i)) <= 1, 1, 'last');
+                Select_channel(i) = find((self.centerFrequencies/compressionParameters.crossFrequencies(i)) <= 1, 1, 'last');
             end
             Select_channel(end) = length(self.centerFrequencies);
             Select_channel = [0, Select_channel];
@@ -44,46 +44,46 @@ classdef WDRCTuner < handle
             for n = 1:self.Nchannel
                 channels = Select_channel(n)+1:Select_channel(n+1);
                 frequencies = self.centerFrequencies(channels);
-                parameters.TK(n) = self.averageOverSelectedFrequencies(self.DSLRawOutput.TK, frequencies);
-                parameters.CR(n) = self.averageOverSelectedFrequencies(self.DSLRawOutput.CR, frequencies);
+                compressionParameters.TK(n) = self.averageOverSelectedFrequencies(self.DSLRawOutput.TK, frequencies);
+                compressionParameters.CR(n) = self.averageOverSelectedFrequencies(self.DSLRawOutput.CR, frequencies);
                 preAdjustedBOLT(n) = self.averageOverSelectedFrequencies(self.DSLRawOutput.TargetBOLT, frequencies);
-                parameters.TKGain(n) = self.averageOverSelectedFrequencies(self.DSLRawOutput.TKgain, frequencies);
+                compressionParameters.TKGain(n) = self.averageOverSelectedFrequencies(self.DSLRawOutput.TKgain, frequencies);
                 vTargetAvg(n) = self.averageOverSelectedFrequencies(self.DSLRawOutput.TargetAvg, frequencies);
                 vSENNcorr(n) = mean(self.SENNCorrection(channels));
-                parameters.BOLT(n) = preAdjustedBOLT(n) - vSENNcorr(n);
+                compressionParameters.BOLT(n) = preAdjustedBOLT(n) - vSENNcorr(n);
             end
             minGain = -vSENNcorr;
             indices = 1:round(self.Nchannel/4);
             minGain(indices) = minGain(indices) - 10*log10(self.Nchannel); % Correct for channel overlap
             maxGain = 55;
-            parameters.maxdB = 119;
-            parameters.rmsdB = 60;
-            parameters.attackMilliseconds = attackMilliseconds;
-            parameters.releaseMilliseconds = releaseMilliseconds;
+            compressionParameters.maxdB = 119;
+            compressionParameters.rmsdB = 60;
+            compressionParameters.attackMilliseconds = attackMilliseconds;
+            compressionParameters.releaseMilliseconds = releaseMilliseconds;
             [x, Fs] = audioread('Carrots.wav');
             for k = 1:2
-                compressor = dslprescriber.WDRCompressor(parameters);
+                compressor = dslprescriber.WDRCompressor(compressionParameters);
                 y = compressor.compress(x, Fs);
-                avg_out = parameters.maxdB + self.speechmap2(y, Fs) + self.SENNCorrection;
+                avg_out = compressionParameters.maxdB + self.speechmap2(y, Fs) + self.SENNCorrection;
                 for n = 1:self.Nchannel
                     vavg_out= mean(avg_out(Select_channel(n)+1:Select_channel(n+1)));
                     diff = vTargetAvg(n) - vavg_out;
-                    parameters.TKGain(n) = parameters.TKGain(n) + diff;
-                    if parameters.TKGain(n) < minGain(n)
-                        parameters.TKGain(n) = minGain(n);
+                    compressionParameters.TKGain(n) = compressionParameters.TKGain(n) + diff;
+                    if compressionParameters.TKGain(n) < minGain(n)
+                        compressionParameters.TKGain(n) = minGain(n);
                     end
-                    if parameters.TKGain(n) > maxGain
-                        parameters.TKGain(n) = maxGain;
+                    if compressionParameters.TKGain(n) > maxGain
+                        compressionParameters.TKGain(n) = maxGain;
                     end
                 end
             end
             DSL.attack = attackMilliseconds;
             DSL.release = releaseMilliseconds;
             DSL.Nchannel = self.Nchannel;
-            DSL.Cross_freq = parameters.crossFrequencies;
-            DSL.TKgain = parameters.TKGain;
-            DSL.CR = parameters.CR;
-            DSL.TK = parameters.TK;
+            DSL.Cross_freq = compressionParameters.crossFrequencies;
+            DSL.TKgain = compressionParameters.TKGain;
+            DSL.CR = compressionParameters.CR;
+            DSL.TK = compressionParameters.TK;
             DSL.BOLT = preAdjustedBOLT;
         end
     end
