@@ -29,7 +29,6 @@ classdef WDRCompressor < handle
             end
             sampleCount = size(y, 1);
             c = zeros(sampleCount, Nchannel);
-            gdB = zeros(sampleCount, Nchannel);
             smoothEnvelope = dslprescriber.SmoothEnvelope(self.parameters.attackMilliseconds, self.parameters.releaseMilliseconds);
             for n = 1:Nchannel
                 if self.parameters.BOLT(n) > compressionLimiterTK
@@ -40,7 +39,7 @@ classdef WDRCompressor < handle
                 end
                 peaks = smoothEnvelope.process(y(:,n), fs);
                 peaksdB = self.parameters.maxdB + 20*log10(peaks);
-                [c(:,n), gdB(:,n)] = self.WDRC_Circuit(y(:,n), self.parameters.TKGain(n), peaksdB, self.parameters.TK(n), self.parameters.CR(n), self.parameters.BOLT(n));
+                c(:, n) = self.WDRC_Circuit(y(:,n), self.parameters.TKGain(n), peaksdB, self.parameters.TK(n), self.parameters.CR(n), self.parameters.BOLT(n));
             end
             comp = sum(c, 2);
             attackMilliseconds = 1;
@@ -111,7 +110,7 @@ classdef WDRCompressor < handle
             end
         end
 
-        function [comp, gdB] = WDRC_Circuit(self, x, TKGain, peaksdB, TK, CR, BOLT)
+        function comp = WDRC_Circuit(self, x, TKGain, peaksdB, TK, CR, BOLT)
             if TK + TKGain > BOLT
                 TK = BOLT - TKGain; 
             end
