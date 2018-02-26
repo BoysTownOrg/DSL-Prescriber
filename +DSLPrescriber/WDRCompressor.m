@@ -48,8 +48,8 @@ classdef WDRCompressor < handle
             out_peak = smoothEnvelope.process(comp, fs);
             out_pdB = self.parameters.maxdB + 20*log10(out_peak);
             TKGain = 0;
-            out_c = self.WDRC_Circuit(comp, TKGain, out_pdB, compressionLimiterTK, compressionLimiterCR, compressionLimiterTK);
-            y = out_c(89:end-88);
+            output = self.WDRC_Circuit(comp, TKGain, out_pdB, compressionLimiterTK, compressionLimiterCR, compressionLimiterTK);
+            y = output(89:end-88);
         end
     end
     
