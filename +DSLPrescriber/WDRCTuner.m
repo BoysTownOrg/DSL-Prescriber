@@ -58,9 +58,9 @@ classdef WDRCTuner < handle
             for k = 1:2
                 compressor = dslprescriber.WDRCompressor(compressionParameters);
                 y = compressor.compress(x, Fs);
-                avg_out = compressionParameters.maxdB + self.speechmap2(y, Fs) + self.SENNCorrection;
+                averageOutput = compressionParameters.maxdB + self.speechmap2(y, Fs) + self.SENNCorrection;
                 for n = 1:self.Nchannel
-                    vavg_out= mean(avg_out(selectedChannels(n)+1:selectedChannels(n+1)));
+                    vavg_out= mean(averageOutput(selectedChannels(n)+1:selectedChannels(n+1)));
                     diff = vTargetAvg(n) - vavg_out;
                     compressionParameters.TKGain(n) = compressionParameters.TKGain(n) + diff;
                     if compressionParameters.TKGain(n) < minGain(n)
@@ -130,7 +130,8 @@ classdef WDRCTuner < handle
                 frequency = frequencies(i);
                 correctedThresholds(i) = thresholds(frequency) + dslprescriber.TDHCorrections.levels(frequency);
             end
-            thirdOctaveThresholds = containers.Map(self.centerFrequencies, ...
+            thirdOctaveThresholds = containers.Map( ...
+                self.centerFrequencies, ...
                 interp1(frequencies, correctedThresholds, self.centerFrequencies));
             if isnan(thirdOctaveThresholds(200))
                 thirdOctaveThresholds(200) = thirdOctaveThresholds(250); 
@@ -146,7 +147,8 @@ classdef WDRCTuner < handle
         
         function frequencies = getCrossFrequencies(self)
             bandwidth = (log10(self.centerFrequencies(end)) - log10(self.centerFrequencies(1))) / self.Nchannel;
-            frequencies = 10.^(bandwidth*(1:self.Nchannel-1) + log10(self.centerFrequencies(1)));
+            logFrequencies = bandwidth*(1:self.Nchannel-1) + log10(self.centerFrequencies(1));
+            frequencies = 10 .^ logFrequencies;
         end
         
         function channels = getSelectedChannels(self, crossFrequencies)
