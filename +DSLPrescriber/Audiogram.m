@@ -180,9 +180,11 @@ classdef Audiogram < handle
             scale = 0.07;
             offsetScale = direction * scale;
             xLimit = get(self.mainAxes, 'xlim');
+            textPosition = [mouseX + offsetScale * (xLimit(end) - xLimit(1)), mouseY, 0];
+            theText = sprintf('%d dB HL', self.getLevelFromMouseY(mouseY));
             set(self.mouseHoverText, ...
-                'position', [mouseX + offsetScale * (xLimit(end) - xLimit(1)), mouseY, 0], ...
-                'string', sprintf('%d dB HL', self.getLevelFromMouseY(mouseY)));
+                'position', textPosition, ...
+                'string', theText);
         end
         
         function level = getLevelFromMouseY(self, mouseY)
