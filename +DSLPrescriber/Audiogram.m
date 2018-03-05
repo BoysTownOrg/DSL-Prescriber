@@ -14,7 +14,7 @@ classdef Audiogram < handle
         frequenciesHz
         xTicks
         mouseHoverText
-        model
+        thresholds
     end
     
     methods
@@ -30,18 +30,16 @@ classdef Audiogram < handle
             xMidPoints = self.getXMidPoints(mainAxes, xTicks);
             entries = self.initEntries(mainFigure, xMidPoints);
             self.setEntryCallbacks(entries, frequenciesHz)
-            model = dslprescriber.Model( ...
-                frequenciesHz, ...
-                @(level, frequency)self.onUpdateModel(level, frequency));
+            levels = nan(1, numel(frequenciesHz));
+            thresholds = containers.Map(frequenciesHz, levels);
             self.entries = entries;
             self.mouseHoverText = mouseHoverText;
             self.selections = selections;
             self.mainFigure = mainFigure;
             self.mainAxes = mainAxes;
-            self.model = model;
+            self.thresholds = thresholds;
             self.xTicks = xTicks;
             self.frequenciesHz = frequenciesHz;
-            self.initializeModelView();
         end
     end
     
@@ -142,33 +140,20 @@ classdef Audiogram < handle
             end
         end
         
-        function initializeModelView(self)
-            for i = 1:numel(self.frequenciesHz)
-                frequency = self.frequenciesHz(i);
-                self.model.setLevel(frequency, nan);
-            end
-        end
-        
         function onCloseRequest(self)
             delete(self.mainFigure);
-        end
-        
-        function onUpdateModel(self, frequency, level)
-            index = self.frequenciesHz == frequency;
-            selection = self.selections(index);
-            set(selection, 'ydata', level);
-            entry = self.entries(index);
-            set(entry, 'string', sprintf('%d', level));
         end
         
         function onAxesClick(self)
             points = get(self.mainAxes, 'currentpoint');
             clickX = points(1);
-            clickY = points(3);
             index = self.getNearestIndex(self.xTicks, clickX);
             frequency = self.frequenciesHz(index);
+            clickY = points(3);
             evaluatedLevel = self.getLevelFromMouseY(clickY);
-            self.model.setLevel(frequency, evaluatedLevel);
+            self.thresholds(frequency) = evaluatedLevel;
+            set(self.selections(index), 'ydata', evaluatedLevel);
+            set(self.entries(index), 'string', sprintf('%d', evaluatedLevel));
         end
         
         function index = getNearestIndex(self, array, value)
@@ -178,7 +163,9 @@ classdef Audiogram < handle
         function onUpdateEntry(self, frequency)
             entry = self.entries(self.frequenciesHz == frequency);
             enteredLevel = str2double(get(entry, 'string'));
-            self.model.setLevel(frequency, enteredLevel);
+            self.thresholds(frequency) = enteredLevel;
+            set(self.selections(self.frequenciesHz == frequency), ...
+                'ydata', enteredLevel);
         end
         
         function onMoveMouse(self)
@@ -218,7 +205,7 @@ classdef Audiogram < handle
             for i = 1:numel(self.frequenciesHz)
                 frequency = self.frequenciesHz(i);
                 tableData(i, FREQUENCY) = frequency;
-                level = self.model.getLevel(frequency);
+                level = self.thresholds(frequency);
                 tableData(i, LEVEL) = level + dslprescriber.TDHCorrections.levels(frequency);
             end
             columnHeadings = cell(1, COLUMNS);
@@ -264,8 +251,7 @@ classdef Audiogram < handle
             attackMilliseconds = protocol.getAttackMilliseconds();
             releaseMilliseconds = protocol.getReleaseMilliseconds();
             channelCount = 8;
-            thresholds = self.model.getThresholds();
-            tuner = dslprescriber.WDRCTuner(channelCount, thresholds, dslFile);
+            tuner = dslprescriber.WDRCTuner(channelCount, self.thresholds, dslFile);
             DSL = tuner.generateDSL(attackMilliseconds, releaseMilliseconds);
         end
         
