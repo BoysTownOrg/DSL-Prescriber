@@ -3,3 +3,6 @@
 *.wav
 *.json
 *.asv
+!fdsa left.csv
+!wilfred left.csv
+!bobby right.csv
