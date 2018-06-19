@@ -264,7 +264,7 @@ classdef Audiogram < handle
             [fileName, pathName] = uiputfile('*.json', 'Save prescription');
             file = [pathName, fileName];
             fid = fopen(file, 'w');
-            assert(fid ~= -1, 'Unable to open ', file, ' for writing.');
+            assert(fid ~= -1, ['Unable to open ', file, ' for writing.']);
             result = jsonencode(DSL);
             fprintf(fid, '%s', result);
             fclose(fid);
