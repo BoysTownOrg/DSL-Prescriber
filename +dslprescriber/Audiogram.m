@@ -94,6 +94,8 @@ classdef Audiogram < handle
                 'yTick', yTicks, ...
                 'ylim', [yTicks(1), yTicks(end)], ...
                 'buttondownfcn', @(~, ~)self.onAxesClick());
+            xlabel(mainAxes, 'frequency (Hz)');
+            ylabel(mainAxes, 'level (dB HL)');
         end
         
         function selections = initSelections(self, parent, xTicks)
