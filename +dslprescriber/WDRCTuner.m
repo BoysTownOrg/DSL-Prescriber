@@ -26,10 +26,6 @@ classdef WDRCTuner < handle
                 ['A threshold must be entered for 6000 or 8000 Hz. ', ...
                     'If no response, please enter 120 dB HL.']);
             dslFileContents = self.readDSLfile(dslFilePath);
-            for i = 1:numel(self.octaveFrequenciesHz)
-                frequencyHz = self.octaveFrequenciesHz(i);
-                thresholds_dB_HL(frequencyHz) = dslFileContents.threshold_dB_SPL(frequencyHz) - dslprescriber.TDHCorrections.levels(frequencyHz);
-            end
             self.verifyMinimumChannelCountMet(channels, dslFileContents.kneepoint_dB_SPL);
             self.adjustTargetAverages(thresholds_dB_HL, dslFileContents);
             self.channels = channels;
