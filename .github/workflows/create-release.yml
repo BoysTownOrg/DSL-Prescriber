@@ -1,0 +1,22 @@
+on:
+  push:
+    tags:
+      - v[0-9]+.[0-9]+.[0-9]+
+
+jobs:
+  release:
+    name: create release
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Get the version
+        id: get_version
+        run: echo ::set-output name=VERSION::${GITHUB_REF/refs\/tags\/v/}
+      - name: Create version function
+        run: echo "function v = version, v = '${{ steps.get_version.outputs.VERSION }}'; end" >+dslprescriber/version.m
+      - name: create GitHub release
+        run: |
+          zip -r dslprescriber +dslprescriber/ carrots.wav *.m
+          gh release create v${{ steps.get_version.outputs.VERSION }} dslprescriber.zip
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
